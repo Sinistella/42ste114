@@ -10,13 +10,13 @@
 (function () {
   'use strict';
 
-  // ★ここで敵リストulの有無をチェック
-  if (!document.querySelector('ul.area_charalist.enemy')) {
-    // 敵エリアでなければ何もしない
+  // セーフエリアならスクリプト停止
+  const enemyList = document.querySelector('ul.area_charalist.enemy');
+  if (!enemyList || enemyList.children.length === 0) {
     return;
   }
 
-  // ★バナーから自キャラenoを取得
+  // バナーから自キャラenoを取得
   function getSelfEno() {
     const banner = document.querySelector('.charaBanner.cap[data-tippy-content*="あなたです"] a[href*="profile.php?eno="]');
     if (!banner) return null;
@@ -87,7 +87,7 @@
     let now = Date.now();
     document.querySelectorAll('.move_box .map_chara[data-eno]:not(.enemy)').forEach(charaDiv => {
       let eno = charaDiv.getAttribute('data-eno');
-      if (eno === selfEno) return;  // ★バナーeno一致ならスキップ
+      if (eno === selfEno) return;  // 自キャラのタイマーは非表示でいいよね？
 
       let timerDiv = charaDiv.querySelector('.kaiki_action_timer');
       if (timerDiv) timerDiv.remove();
