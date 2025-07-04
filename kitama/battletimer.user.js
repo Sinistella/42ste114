@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         北摩戦闘エリアタイマー
 // @namespace    https://wdrb.work/
-// @version      1.0
+// @version      1.1
 // @description  敵のWTと座標、味方のRWTを表示
 // @match        https://wdrb.work/otherside/area.php*
 // @grant        none
@@ -10,9 +10,9 @@
 (function () {
   'use strict';
 
-  // セーフエリアならスクリプト停止
+  // セーフエリアではタイマー非表示
   const enemyList = document.querySelector('ul.area_charalist.enemy');
-  if (!enemyList || enemyList.children.length === 0) {
+  if (!enemyList || !enemyList.querySelector('li')) {
     return;
   }
 
@@ -87,7 +87,7 @@
     let now = Date.now();
     document.querySelectorAll('.move_box .map_chara[data-eno]:not(.enemy)').forEach(charaDiv => {
       let eno = charaDiv.getAttribute('data-eno');
-      if (eno === selfEno) return;  // 自キャラのタイマーは非表示でいいよね？
+      if (eno === selfEno) return;  // 自キャラのタイマー非表示でいいよね？
 
       let timerDiv = charaDiv.querySelector('.kaiki_action_timer');
       if (timerDiv) timerDiv.remove();
