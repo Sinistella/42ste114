@@ -10,6 +10,12 @@
 (function () {
   'use strict';
 
+  // ★ここで敵リストulの有無をチェック
+  if (!document.querySelector('ul.area_charalist.enemy')) {
+    // 敵エリアでなければ何もしない
+    return;
+  }
+
   // ★バナーから自キャラenoを取得
   function getSelfEno() {
     const banner = document.querySelector('.charaBanner.cap[data-tippy-content*="あなたです"] a[href*="profile.php?eno="]');
