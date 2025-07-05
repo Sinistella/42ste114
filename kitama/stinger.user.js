@@ -18,7 +18,7 @@
         bg: 'rgba(36,36,36,0.97)',
         border: '#3F4A5A',
         text: '#F1F3F4',
-        accent: '#FFEDB3',
+        accent: '#FFF350', // 明るい黄色。目にやさしい＆高コントラスト
         buttonBg: '#425062',
         buttonBgHover: '#516274',
         inputBg: '#1C2430',
@@ -37,7 +37,7 @@
     ui.style.fontWeight = 'bold';
     ui.style.color = colors.text;
     ui.style.fontFamily = "'Noto Sans JP', sans-serif";
-    ui.style.fontSize = '16px';
+    ui.style.fontSize = '18px';
 
     const inputStyle = [
         'width:120px',
@@ -82,6 +82,7 @@
         if (e.key === 'Enter') searchFunc();
     });
 
+    // ボタンhover効果
     document.addEventListener('mouseover', e => {
         if (e.target.id === 'enoSearchBtn') e.target.style.background = colors.buttonBgHover;
     });
@@ -89,6 +90,7 @@
         if (e.target.id === 'enoSearchBtn') e.target.style.background = colors.buttonBg;
     });
 
+    // 検索本体（毎回最新HTMLをfetchしてパース）
     function searchFunc() {
         const eno = enoInput.value.trim();
         const resultDiv = document.getElementById('enoResult');
@@ -99,62 +101,74 @@
             return;
         }
 
-        let found = false;
-        let charName = '';
-        let areaid = '';
-        let foundSection = '';
-        let foundArea = '';
-        let isUra = false;
-        let charUrl = `https://wdrb.work/otherside/profile.php?eno=${eno}`;
+        resultDiv.textContent = '最新情報を取得中…';
 
-        document.querySelectorAll('.arealist').forEach(arealist => {
-            const areaStatus = arealist.querySelector('.area_status');
-            if (!areaStatus) return;
-            const _areaid = arealist.getAttribute('data-areaid') || '';
-            const _sect = arealist.getAttribute('data-sectname') || '';
-            const _area = arealist.getAttribute('data-areaname') || '';
-            const classList = arealist.className;
+        fetch(location.href, {cache: 'reload'})
+            .then(res => res.text())
+            .then(html => {
+                // 仮想DOMでパース
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                let found = false;
+                let charName = '';
+                let areaid = '';
+                let foundSection = '';
+                let foundArea = '';
+                let isUra = false;
+                let charUrl = `https://wdrb.work/otherside/profile.php?eno=${eno}`;
 
-            areaStatus.querySelectorAll('li.cap').forEach(li => {
-                const a = li.querySelector('a[href*="profile.php?eno="]');
-                if (!a) return;
-                const m = a.href.match(/eno=([a-zA-Z0-9]+)/);
-                if (m && m[1] === eno) {
-                    found = true;
-                    charName = li.getAttribute('data-tippy-content') || `ENO.${eno}`;
-                    areaid = _areaid;
-                    foundSection = _sect;
-                    foundArea = _area;
-                    charUrl = a.href;
-                    isUra = classList.includes('otherside');
+                doc.querySelectorAll('.arealist').forEach(arealist => {
+                    const areaStatus = arealist.querySelector('.area_status');
+                    if (!areaStatus) return;
+                    const _areaid = arealist.getAttribute('data-areaid') || '';
+                    const _sect = arealist.getAttribute('data-sectname') || '';
+                    const _area = arealist.getAttribute('data-areaname') || '';
+                    const classList = arealist.className;
+
+                    areaStatus.querySelectorAll('li.cap').forEach(li => {
+                        const a = li.querySelector('a[href*="profile.php?eno="]');
+                        if (!a) return;
+                        const m = a.href.match(/eno=([a-zA-Z0-9]+)/);
+                        if (m && m[1] === eno) {
+                            found = true;
+                            charName = li.getAttribute('data-tippy-content') || `ENO.${eno}`;
+                            areaid = _areaid;
+                            foundSection = _sect;
+                            foundArea = _area;
+                            charUrl = a.href;
+                            isUra = classList.includes('otherside');
+                        }
+                    });
+                });
+
+                if (!found) {
+                    let lostName = '';
+                    doc.querySelectorAll('li.cap').forEach(li => {
+                        const a = li.querySelector('a[href*="profile.php?eno="]');
+                        if (!a) return;
+                        const m = a.href.match(/eno=([a-zA-Z0-9]+)/);
+                        if (m && m[1] === eno) {
+                            lostName = li.getAttribute('data-tippy-content') || '';
+                            charUrl = a.href;
+                        }
+                    });
+                    charName = lostName || `ENO.${eno}`;
                 }
-            });
-        });
 
-        if (!found) {
-            let lostName = '';
-            document.querySelectorAll('li.cap').forEach(li => {
-                const a = li.querySelector('a[href*="profile.php?eno="]');
-                if (!a) return;
-                const m = a.href.match(/eno=([a-zA-Z0-9]+)/);
-                if (m && m[1] === eno) {
-                    lostName = li.getAttribute('data-tippy-content') || '';
-                    charUrl = a.href;
+                if (found) {
+                    const areaUrl = `https://wdrb.work/otherside/field.php?a_id=${areaid}&area_move=1`;
+                    const hyouUra = isUra
+                        ? `<span style="font-weight:bold;color:${colors.ura};">(裏)</span>`
+                        : `<span style="font-weight:bold;color:${colors.hyou};">(表)</span>`;
+                    resultDiv.innerHTML =
+                        `<a href="${charUrl}" style="font-weight:bold;text-decoration:underline;color:${colors.accent};" target="_blank">${charName}</a> は ${hyouUra}${foundSection} - <a href="${areaUrl}" style="font-weight:bold;text-decoration:underline;color:${colors.accent};" target="_blank">${foundArea}</a> にいます。`;
+                } else {
+                    resultDiv.innerHTML =
+                        `<a href="${charUrl}" style="font-weight:bold;text-decoration:underline;color:${colors.accent};" target="_blank">${charName}</a> は 見つかりません。`;
                 }
+            })
+            .catch(() => {
+                resultDiv.textContent = 'データの取得に失敗しました。ページを再読込してください。';
             });
-            charName = lostName || `ENO.${eno}`;
-        }
-
-        if (found) {
-            const areaUrl = `https://wdrb.work/otherside/field.php?a_id=${areaid}&area_move=1`;
-            const hyouUra = isUra
-                ? `<span style="font-weight:bold;color:${colors.ura};">(裏)</span>`
-                : `<span style="font-weight:bold;color:${colors.hyou};">(表)</span>`;
-            resultDiv.innerHTML =
-                `<a href="${charUrl}" style="font-weight:bold;text-decoration:underline;color:${colors.accent};" target="_blank">${charName}</a> は ${hyouUra}${foundSection} - <a href="${areaUrl}" style="font-weight:bold;text-decoration:underline;color:${colors.accent};" target="_blank">${foundArea}</a> にいます。`;
-        } else {
-            resultDiv.innerHTML =
-                `<a href="${charUrl}" style="font-weight:bold;text-decoration:underline;color:${colors.accent};" target="_blank">${charName}</a> は 見つかりません。`;
-        }
     }
 })();
