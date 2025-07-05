@@ -18,7 +18,7 @@
         bg: 'rgba(36,36,36,0.97)',
         border: '#3F4A5A',
         text: '#F1F3F4',
-        accent: '#FFF350', // 明るい黄色。目にやさしい＆高コントラスト
+        accent: '#FFEDB3',
         buttonBg: '#425062',
         buttonBgHover: '#516274',
         inputBg: '#1C2430',
@@ -37,7 +37,6 @@
     ui.style.fontWeight = 'bold';
     ui.style.color = colors.text;
     ui.style.fontFamily = "'Noto Sans JP', sans-serif";
-    ui.style.fontSize = '18px';
 
     const inputStyle = [
         'width:120px',
