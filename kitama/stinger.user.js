@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         北摩ENOスティンガー
 // @namespace    https://wdrb.work/
-// @version      1.1
+// @version      1.2
 // @description  ENOでキャラ名＋現在地リンク検索（数字のみ入力可対応）
 // @match        https://wdrb.work/otherside/field.php*
 // @grant        none
