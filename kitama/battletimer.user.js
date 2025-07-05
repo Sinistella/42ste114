@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         北摩戦闘エリアタイマー
 // @namespace    https://wdrb.work/
-// @version      1.1
+// @version      1.2
 // @description  敵のWTと座標、味方のRWTを表示
 // @match        https://wdrb.work/otherside/area.php*
 // @grant        none
@@ -10,13 +10,61 @@
 (function () {
   'use strict';
 
-  // セーフエリアではタイマー非表示
+  // WT算出用（全キャラ共通ロジック）
+  function getRemainWT(eno, enoTimeMap, now) {
+    if (!enoTimeMap[eno]) return 60;
+    let sec = Math.floor((now - enoTimeMap[eno]) / 1000);
+    let remain = 60 - sec;
+    return remain;
+  }
+
+  // メインタイマー管理
+  let mainTimer = null;
+  function startMainTimer() {
+    if (!mainTimer) {
+      mainTimer = setInterval(refresh, 1000);
+    }
+  }
+  function stopMainTimer() {
+    if (mainTimer) {
+      clearInterval(mainTimer);
+      mainTimer = null;
+    }
+  }
+
+  // モーダル監視
+  let modalTimer = null;
+  function startModalTimer() {
+    if (!modalTimer) {
+      modalTimer = setInterval(refresh, 1000);
+    }
+  }
+  function stopModalTimer() {
+    if (modalTimer) {
+      clearInterval(modalTimer);
+      modalTimer = null;
+    }
+  }
+  function observeModal() {
+    const modal = document.getElementById('targetModal');
+    if (!modal) return;
+    const obs = new MutationObserver(() => {
+      if (modal.style.display === 'block') {
+        startModalTimer();
+      } else {
+        stopModalTimer();
+      }
+    });
+    obs.observe(modal, { attributes: true, attributeFilter: ['style'] });
+  }
+
+  // セーフエリア判定
   const enemyList = document.querySelector('ul.area_charalist.enemy');
   if (!enemyList || !enemyList.querySelector('li')) {
     return;
   }
 
-  // バナーから自キャラenoを取得
+  // 自キャラeno取得
   function getSelfEno() {
     const banner = document.querySelector('.charaBanner.cap[data-tippy-content*="あなたです"] a[href*="profile.php?eno="]');
     if (!banner) return null;
@@ -24,6 +72,7 @@
     return match ? match[1] : null;
   }
 
+  // ENEMY HUD描画
   function drawEnemyHUD() {
     document.querySelectorAll('.kaiki_skill_timer_in_hpbar,.kaiki_coord_label').forEach(e => e.remove());
     document.querySelectorAll('.map_chara.enemy.common').forEach(chara => {
@@ -67,6 +116,7 @@
     });
   }
 
+  // WT/RWTタイマー描画（全キャラ共通、リストも上部も同じ判定）
   function drawPlayerTimers() {
     let selfEno = getSelfEno();
 
@@ -85,17 +135,22 @@
     });
 
     let now = Date.now();
-    document.querySelectorAll('.move_box .map_chara[data-eno]:not(.enemy)').forEach(charaDiv => {
+
+    // --- 上部マップ＋モーダル内キャラタイマー（自キャラ含む全員）
+    document.querySelectorAll('.move_box .map_chara[data-eno]:not(.enemy), .modal .map_chara[data-eno]:not(.enemy)').forEach(charaDiv => {
       let eno = charaDiv.getAttribute('data-eno');
-      if (eno === selfEno) return;  // 自キャラのタイマー非表示でいいよね？
 
       let timerDiv = charaDiv.querySelector('.kaiki_action_timer');
       if (timerDiv) timerDiv.remove();
 
-      let display = 'R';
-      if (enoTimeMap[eno]) {
-        let sec = Math.floor((now - enoTimeMap[eno]) / 1000);
-        display = (sec < 60) ? (60 - sec) : 'R';
+      let remain = getRemainWT(eno, enoTimeMap, now);
+      let display;
+      if (remain <= 0 || remain >= 60) {
+        display = 'R';
+      } else if (remain > 9) {
+        display = 'W';
+      } else if (remain > 0) {
+        display = remain;
       }
 
       let d = document.createElement('div');
@@ -112,6 +167,7 @@
       d.style.lineHeight = '1.1';
       d.style.textShadow = '1px 1px 2px #000';
 
+      // Rのみ下、Wや数字は上
       if (display === 'R') {
         d.innerHTML = 'R';
         d.style.bottom = '-64px';
@@ -121,8 +177,41 @@
       }
       charaDiv.appendChild(d);
     });
+
+    // --- キャラリスト側（ul.area_charalist）は全員対象、常時カウント or R
+    document.querySelectorAll('ul.area_charalist li').forEach(li => {
+      let link = li.querySelector('a[href^="profile.php?eno="]');
+      if (!link) return;
+      let eno = (link.href.match(/eno=(\d+)/)||[])[1];
+      if (!eno) return;
+
+      let timerSpan = li.querySelector('.kaiki_charalist_timer');
+      if (timerSpan) timerSpan.remove();
+
+      let remain = getRemainWT(eno, enoTimeMap, now);
+      let display;
+      if (remain <= 0 || remain >= 60) {
+        display = 'R';
+      } else {
+        display = remain;
+      }
+
+      let nameB = li.querySelector('p.small b');
+      if (nameB) {
+        let span = document.createElement('span');
+        span.className = 'kaiki_charalist_timer';
+        span.style.marginLeft = '0.5em';
+        span.style.fontSize = '12px';
+        span.style.fontWeight = 'bold';
+        span.style.color = '#fff200';
+        span.style.textShadow = '1px 1px 2px #222,0 0 6px #000';
+        span.textContent = display;
+        nameB.after(span);
+      }
+    });
   }
 
+  // 各要素のoverflowをvisibleに（はみ出し対策）
   function ensureOverflowVisible () {
     ['.map_chara','.map_chip','.areamap','.map_area','.move_box'].forEach(sel =>
       document.querySelectorAll(sel).forEach(el =>
@@ -131,17 +220,25 @@
     );
   }
 
+  // 全体リフレッシュ
   function refresh() {
     ensureOverflowVisible();
     drawEnemyHUD();
     drawPlayerTimers();
   }
 
+  // 起動時
   refresh();
+  startMainTimer();
+
+  // area_bg, bodyを監視
   const area=document.querySelector('.area_bg')||document.body;
   new MutationObserver(refresh).observe(area,{
     childList:true, subtree:true, attributes:true,
     attributeFilter:['data-next_at','data-skill_name','class']
   });
-  setInterval(refresh,1000);
+
+  // モーダル監視
+  observeModal();
+
 })();
