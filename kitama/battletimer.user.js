@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         北摩戦闘エリアタイマー（全表示WT統一・カウントダウン黄統一）
+// @name         北摩戦闘エリアタイマー
 // @namespace    https://wdrb.work/
-// @version      1.21
-// @description  WT/RWTカウントダウン全キャラ統一・Rのみ下表示・カウントダウン数字は黄＋影
+// @version      1.22
+// @description  敵のWTと座標、味方のRWTを表示
 // @match        https://wdrb.work/otherside/area.php*
 // @grant        none
 // ==/UserScript==
