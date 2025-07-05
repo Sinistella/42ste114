@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         北摩戦闘エリアタイマー
+// @name         北摩戦闘エリアタイマー（全表示WT統一・カウントダウン黄統一）
 // @namespace    https://wdrb.work/
-// @version      1.2
-// @description  敵のWTと座標、味方のRWTを表示
+// @version      1.21
+// @description  WT/RWTカウントダウン全キャラ統一・Rのみ下表示・カウントダウン数字は黄＋影
 // @match        https://wdrb.work/otherside/area.php*
 // @grant        none
 // ==/UserScript==
@@ -157,7 +157,6 @@
       d.className = 'kaiki_action_timer';
       d.style.fontSize = '16px';
       d.style.fontWeight = 'bold';
-      d.style.color = '#fff';
       d.style.position = 'absolute';
       d.style.left = '50%';
       d.style.transform = 'translateX(-50%)';
@@ -165,14 +164,22 @@
       d.style.userSelect = 'none';
       d.style.whiteSpace = 'nowrap';
       d.style.lineHeight = '1.1';
-      d.style.textShadow = '1px 1px 2px #000';
 
-      // Rのみ下、Wや数字は上
+      // Rのみ下・白、Wは白上、数字は黄＋影上
       if (display === 'R') {
         d.innerHTML = 'R';
+        d.style.color = '#fff';
+        d.style.textShadow = '1px 1px 2px #000';
         d.style.bottom = '-64px';
+      } else if (display === 'W') {
+        d.textContent = display;
+        d.style.color = '#fff';
+        d.style.textShadow = '1px 1px 2px #000';
+        d.style.bottom = '-48px';
       } else {
         d.textContent = display;
+        d.style.color = '#fff200';
+        d.style.textShadow = '1px 1px 2px #222, 0 0 6px #000';
         d.style.bottom = '-48px';
       }
       charaDiv.appendChild(d);
