@@ -1,0 +1,131 @@
+①
+let script = document.createElement("script");
+script.src = "https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js";
+document.body.appendChild(script);
+
+②
+(async () => {
+    while (typeof XLSX === "undefined") await new Promise(r => setTimeout(r, 100));
+    // UI生成
+    let box = document.createElement("div");
+    box.style.position = "fixed";
+    box.style.top = "10px";
+    box.style.left = "10px";
+    box.style.background = "#222";
+    box.style.padding = "16px";
+    box.style.zIndex = "99999";
+    box.style.borderRadius = "8px";
+    box.style.boxShadow = "0 4px 16px #000a";
+    let ta = document.createElement("textarea");
+    ta.style.width = "520px";
+    ta.style.height = "220px";
+    ta.placeholder = "ここにURLを1行ずつ貼り付け";
+    let btn = document.createElement("button");
+    btn.textContent = "OK（実行）";
+    btn.style.display = "block";
+    btn.style.margin = "16px auto 0";
+    btn.style.padding = "8px 24px";
+    btn.style.fontSize = "1.2em";
+    btn.style.cursor = "pointer";
+    box.appendChild(ta);
+    box.appendChild(btn);
+    document.body.appendChild(box);
+    ta.focus();
+
+    btn.onclick = async () => {
+        let urls = ta.value.split(/\r?\n/).map(s=>s.trim()).filter(s=>/^https?:\/\//.test(s));
+        document.body.removeChild(box);
+        if (!urls.length) { alert("URLがありません"); return; }
+        let allRows = [
+            ["ID","タイプ","アイテム名","価格","red","yellow","blue","green","buff","フレーバーテキスト","URL"]
+        ];
+        function getTag(itemContent, cls) {
+            let sel = `span.${cls.join('.')}`;
+            let el = itemContent.querySelector(sel);
+            return el ? el.textContent.trim() : "";
+        }
+        function getCapBuff(itemContent) {
+            for (let el of itemContent.querySelectorAll('span')) {
+                let classList = Array.from(el.classList);
+                if (classList.length === 3 && classList.includes("tag") && classList.includes("cap") && classList.includes("buff")) {
+                    return el.textContent.trim();
+                }
+            }
+            return "";
+        }
+        for (let url of urls) {
+            let res = await fetch(url, {credentials: "include"});
+            let text = await res.text();
+            let dom = document.implementation.createHTMLDocument("shop");
+            dom.documentElement.innerHTML = text;
+            let lis = dom.querySelectorAll("ul.item_box.shop_item_list > li.shop_sale_item");
+            for (let li of lis) {
+                let shopId = li.getAttribute("data-shop-id") || "";
+                let itemType = li.getAttribute("data-item-type") || "";
+                let summary = li.querySelector("summary");
+                let priceRaw = summary ? (summary.querySelector("span.item_price_shop")?.textContent.trim() || "") : "";
+                // 価格を「18500」などの純数字に変換
+                let price = "";
+                if (priceRaw) {
+                    price = priceRaw.replace(/,/g, "").replace(/CR/i, "").trim();
+                }
+                let name = "";
+                if (summary) {
+                    let tmp = summary.textContent.trim();
+                    if (priceRaw) tmp = tmp.replace(priceRaw, "").trim();
+                    let icon = summary.querySelector("span");
+                    if (icon) tmp = tmp.replace(icon.textContent.trim(), "").trim();
+                    name = tmp;
+                }
+                let itemContent = li.querySelector("div.item-content");
+                let tagRed = getTag(itemContent, ["tag","red"]);
+                let tagYellow = getTag(itemContent, ["tag","yellow"]);
+                let tagBlue = getTag(itemContent, ["tag","blue"]);
+                let tagGreen = getTag(itemContent, ["tag","green"]);
+                let tagCapBuff = getCapBuff(itemContent);
+                // flavor text
+                let flavor = "";
+                if (itemContent) {
+                    let br = itemContent.querySelector("br");
+                    if (br) {
+                        let arr = [];
+                        let node = br.nextSibling;
+                        while (node) {
+                            if (node.nodeType === 1 && (node.tagName === "FORM" || node.tagName === "SPAN")) {
+                                node = node.nextSibling;
+                                continue;
+                            }
+                            if (node.nodeType === 3) {
+                                arr.push(node.textContent.trim());
+                            } else if (node.nodeType === 1) {
+                                arr.push(node.textContent.trim());
+                            }
+                            node = node.nextSibling;
+                        }
+                        flavor = arr.join("").trim();
+                    } else {
+                        // brが無い場合はitemContent直下テキスト
+                        flavor = Array.from(itemContent.childNodes)
+                            .filter(n => n.nodeType === 3)
+                            .map(n => n.textContent.trim())
+                            .join("");
+                    }
+                }
+                allRows.push([shopId, itemType, name, price, tagRed, tagYellow, tagBlue, tagGreen, tagCapBuff, flavor, url]);
+            }
+        }
+        let wb = XLSX.utils.book_new();
+        let ws = XLSX.utils.aoa_to_sheet(allRows);
+        XLSX.utils.book_append_sheet(wb, ws, "shop_items");
+        let wbout = XLSX.write(wb, {bookType: "xlsx", type: "array"});
+        let blob = new Blob([wbout], {type: "application/octet-stream"});
+        let downloadUrl = URL.createObjectURL(blob);
+        let a = document.createElement("a");
+        a.href = downloadUrl;
+        a.download = "all_shop_items.xlsx";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(downloadUrl); }, 2000);
+        alert("出力完了！");
+    };
+})();
