@@ -37,7 +37,7 @@ document.body.appendChild(script);
         document.body.removeChild(box);
         if (!urls.length) { alert("URLがありません"); return; }
         let allRows = [
-            ["ID","タイプ","アイテム名","価格","red","yellow","blue","green","buff","フレーバーテキスト","URL"]
+            ["shop-id","item-type","アイテム名（クリックで店へ）","価格","red","yellow","blue","green","buff","フレーバーテキスト"]
         ];
         function getTag(itemContent, cls) {
             let sel = `span.${cls.join('.')}`;
@@ -104,14 +104,15 @@ document.body.appendChild(script);
                         }
                         flavor = arr.join("").trim();
                     } else {
-                        // brが無い場合はitemContent直下テキスト
                         flavor = Array.from(itemContent.childNodes)
                             .filter(n => n.nodeType === 3)
                             .map(n => n.textContent.trim())
                             .join("");
                     }
                 }
-                allRows.push([shopId, itemType, name, price, tagRed, tagYellow, tagBlue, tagGreen, tagCapBuff, flavor, url]);
+                // アイテム名をExcelのハイパーリンク形式で
+                let nameLink = `=HYPERLINK("${url}", "${name.replace(/"/g,'""')}")`;
+                allRows.push([shopId, itemType, nameLink, price, tagRed, tagYellow, tagBlue, tagGreen, tagCapBuff, flavor]);
             }
         }
         let wb = XLSX.utils.book_new();
