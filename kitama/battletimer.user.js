@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         北摩戦闘エリアタイマー
+// @name         北摩バトルタイマー
 // @namespace    https://wdrb.work/
-// @version      1.22
+// @version      1.3
 // @description  敵のWTと座標、味方のRWTを表示
 // @match        https://wdrb.work/otherside/area.php*
 // @grant        none
@@ -10,52 +10,19 @@
 (function () {
   'use strict';
 
-  // WT算出用（全キャラ共通ロジック）
-  function getRemainWT(eno, enoTimeMap, now) {
-    if (!enoTimeMap[eno]) return 60;
-    let sec = Math.floor((now - enoTimeMap[eno]) / 1000);
-    let remain = 60 - sec;
-    return remain;
+  // WT算出（従来：60秒固定→今：data-remain基準に可変）
+  function getMateRemainWT(actionUnixSec, baseRemain) {
+    const nowSec = Math.floor(Date.now() / 1000);
+    const diff = nowSec - actionUnixSec;
+    return Math.max(0, baseRemain - diff);
   }
 
-  // メインタイマー管理
-  let mainTimer = null;
-  function startMainTimer() {
-    if (!mainTimer) {
-      mainTimer = setInterval(refresh, 1000);
-    }
-  }
-  function stopMainTimer() {
-    if (mainTimer) {
-      clearInterval(mainTimer);
-      mainTimer = null;
-    }
-  }
-
-  // モーダル監視
-  let modalTimer = null;
-  function startModalTimer() {
-    if (!modalTimer) {
-      modalTimer = setInterval(refresh, 1000);
-    }
-  }
-  function stopModalTimer() {
-    if (modalTimer) {
-      clearInterval(modalTimer);
-      modalTimer = null;
-    }
-  }
-  function observeModal() {
-    const modal = document.getElementById('targetModal');
-    if (!modal) return;
-    const obs = new MutationObserver(() => {
-      if (modal.style.display === 'block') {
-        startModalTimer();
-      } else {
-        stopModalTimer();
-      }
-    });
-    obs.observe(modal, { attributes: true, attributeFilter: ['style'] });
+  // ページ初期化情報
+  const PAGE_INIT_TIME = Math.floor(Date.now() / 1000);
+  let baseRemain = 60;
+  const timeRemainElem = document.getElementById('time_remain');
+  if (timeRemainElem) {
+    baseRemain = parseInt(timeRemainElem.getAttribute('data-remain'), 10);
   }
 
   // セーフエリア判定
@@ -116,41 +83,72 @@
     });
   }
 
-  // WT/RWTタイマー描画（全キャラ共通、リストも上部も同じ判定）
+  // WT/RWTタイマー描画
   function drawPlayerTimers() {
-    let selfEno = getSelfEno();
+    let selfEno = String(getSelfEno());
 
+    // 【変更点】行動ログだけを抽出
     let enoTimeMap = {};
-    document.querySelectorAll('.chat_shout').forEach(div => {
+    document.querySelectorAll('.system.bt-log.following, .system.bt-log.outer').forEach(div => {
       let enoA = div.querySelector('a[href^="profile.php?eno="]');
       let timeS = div.querySelector('.chat_time');
       if (!enoA || !timeS) return;
       let eno = (enoA.href.match(/eno=(\d+)/)||[])[1];
       let chatTimeStr = timeS.textContent.trim();
       if (!eno || !chatTimeStr) return;
-      let chatTime = new Date(chatTimeStr.replace(/-/g, '/')).getTime();
+      let chatTime = Math.floor(new Date(chatTimeStr.replace(/-/g, '/')).getTime() / 1000);
       if (!enoTimeMap[eno] || chatTime > enoTimeMap[eno]) {
         enoTimeMap[eno] = chatTime;
       }
     });
 
-    let now = Date.now();
-
-    // --- 上部マップ＋モーダル内キャラタイマー（自キャラ含む全員）
+    // フィールド側タイマー
     document.querySelectorAll('.move_box .map_chara[data-eno]:not(.enemy), .modal .map_chara[data-eno]:not(.enemy)').forEach(charaDiv => {
-      let eno = charaDiv.getAttribute('data-eno');
+      let eno = String(charaDiv.getAttribute('data-eno')).trim();
 
+      // 既存タイマー削除
       let timerDiv = charaDiv.querySelector('.kaiki_action_timer');
       if (timerDiv) timerDiv.remove();
 
-      let remain = getRemainWT(eno, enoTimeMap, now);
-      let display;
-      if (remain <= 0 || remain >= 60) {
-        display = 'R';
-      } else if (remain > 9) {
-        display = 'W';
-      } else if (remain > 0) {
-        display = remain;
+      let remain, display, color;
+      if (eno === selfEno) {
+        // 自キャラ：公式値完全同期
+        if (typeof baseRemain === 'number' && !isNaN(baseRemain)) {
+          let nowSec = Math.floor(Date.now() / 1000);
+          remain = Math.max(0, baseRemain - (nowSec - PAGE_INIT_TIME));
+        } else {
+          remain = '?';
+        }
+        // 表示ルールは従来通り
+        if (remain === '?' || remain <= 0 || remain >= 60) {
+          display = 'R';
+          color = '#fff';
+        } else if (remain > 9) {
+          display = 'W';
+          color = '#fff';
+        } else if (remain > 0) {
+          display = remain;
+          color = '#fff200';
+        }
+      } else {
+        // 味方キャラ
+        if (enoTimeMap[eno]) {
+          remain = getMateRemainWT(enoTimeMap[eno], baseRemain);
+          if (remain === '?' || remain <= 0 || remain >= 60) {
+            display = 'R';
+            color = '#fff';
+          } else if (remain > 9) {
+            display = 'W';
+            color = '#fff';
+          } else if (remain > 0) {
+            display = remain;
+            color = '#fff200';
+          }
+        } else {
+          // 発言履歴がなければ「?」で黄緑色
+          display = '?';
+          color = '#b8d200';
+        }
       }
 
       let d = document.createElement('div');
@@ -164,43 +162,56 @@
       d.style.userSelect = 'none';
       d.style.whiteSpace = 'nowrap';
       d.style.lineHeight = '1.1';
+      d.style.color = color;
+      d.style.textShadow = '1px 1px 2px #222, 0 0 6px #000';
+      d.style.bottom = (display === 'R' ? '-64px' : '-48px');
 
-      // Rのみ下・白、Wは白上、数字は黄＋影上
-      if (display === 'R') {
-        d.innerHTML = 'R';
-        d.style.color = '#fff';
-        d.style.textShadow = '1px 1px 2px #000';
-        d.style.bottom = '-64px';
-      } else if (display === 'W') {
-        d.textContent = display;
-        d.style.color = '#fff';
-        d.style.textShadow = '1px 1px 2px #000';
-        d.style.bottom = '-48px';
-      } else {
-        d.textContent = display;
-        d.style.color = '#fff200';
-        d.style.textShadow = '1px 1px 2px #222, 0 0 6px #000';
-        d.style.bottom = '-48px';
-      }
+      d.textContent = display;
       charaDiv.appendChild(d);
     });
 
-    // --- キャラリスト側（ul.area_charalist）は全員対象、常時カウント or R
+    // キャラリスト側タイマー
     document.querySelectorAll('ul.area_charalist li').forEach(li => {
       let link = li.querySelector('a[href^="profile.php?eno="]');
       if (!link) return;
-      let eno = (link.href.match(/eno=(\d+)/)||[])[1];
+      let eno = String((link.href.match(/eno=(\d+)/)||[])[1]);
       if (!eno) return;
 
       let timerSpan = li.querySelector('.kaiki_charalist_timer');
       if (timerSpan) timerSpan.remove();
 
-      let remain = getRemainWT(eno, enoTimeMap, now);
-      let display;
-      if (remain <= 0 || remain >= 60) {
-        display = 'R';
+      let remain, display, color;
+      if (eno === selfEno) {
+        if (typeof baseRemain === 'number' && !isNaN(baseRemain)) {
+          let nowSec = Math.floor(Date.now() / 1000);
+          remain = Math.max(0, baseRemain - (nowSec - PAGE_INIT_TIME));
+        } else {
+          remain = '?';
+        }
+        if (remain === '?' || remain <= 0 || remain >= 60) {
+          display = 'R';
+          color = '#fff';
+        } else if (remain > 9) {
+          display = 'W';
+          color = '#fff';
+        } else if (remain > 0) {
+          display = remain;
+          color = '#fff200';
+        }
       } else {
-        display = remain;
+        if (enoTimeMap[eno]) {
+          remain = getMateRemainWT(enoTimeMap[eno], baseRemain);
+          if (remain === '?' || remain <= 0 || remain >= 60) {
+            display = 'R';
+            color = '#fff';
+          } else {
+            display = remain;
+            color = '#fff200';
+          }
+        } else {
+          display = '?';
+          color = '#b8d200';
+        }
       }
 
       let nameB = li.querySelector('p.small b');
@@ -210,7 +221,7 @@
         span.style.marginLeft = '0.5em';
         span.style.fontSize = '12px';
         span.style.fontWeight = 'bold';
-        span.style.color = '#fff200';
+        span.style.color = color;
         span.style.textShadow = '1px 1px 2px #222,0 0 6px #000';
         span.textContent = display;
         nameB.after(span);
@@ -218,7 +229,7 @@
     });
   }
 
-  // 各要素のoverflowをvisibleに（はみ出し対策）
+  // 各要素のoverflowをvisibleに
   function ensureOverflowVisible () {
     ['.map_chara','.map_chip','.areamap','.map_area','.move_box'].forEach(sel =>
       document.querySelectorAll(sel).forEach(el =>
@@ -236,16 +247,54 @@
 
   // 起動時
   refresh();
+
+  // メインタイマー管理
+  let mainTimer = null;
+  function startMainTimer() {
+    if (!mainTimer) {
+      mainTimer = setInterval(refresh, 1000);
+    }
+  }
+  function stopMainTimer() {
+    if (mainTimer) {
+      clearInterval(mainTimer);
+      mainTimer = null;
+    }
+  }
   startMainTimer();
 
   // area_bg, bodyを監視
-  const area=document.querySelector('.area_bg')||document.body;
-  new MutationObserver(refresh).observe(area,{
-    childList:true, subtree:true, attributes:true,
-    attributeFilter:['data-next_at','data-skill_name','class']
+  const area = document.querySelector('.area_bg') || document.body;
+  new MutationObserver(refresh).observe(area, {
+    childList: true, subtree: true, attributes: true,
+    attributeFilter: ['data-next_at', 'data-skill_name', 'class']
   });
 
   // モーダル監視
+  let modalTimer = null;
+  function startModalTimer() {
+    if (!modalTimer) {
+      modalTimer = setInterval(refresh, 1000);
+    }
+  }
+  function stopModalTimer() {
+    if (modalTimer) {
+      clearInterval(modalTimer);
+      modalTimer = null;
+    }
+  }
+  function observeModal() {
+    const modal = document.getElementById('targetModal');
+    if (!modal) return;
+    const obs = new MutationObserver(() => {
+      if (modal.style.display === 'block') {
+        startModalTimer();
+      } else {
+        stopModalTimer();
+      }
+    });
+    obs.observe(modal, { attributes: true, attributeFilter: ['style'] });
+  }
   observeModal();
 
 })();
