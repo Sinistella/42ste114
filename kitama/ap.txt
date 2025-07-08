@@ -1,0 +1,76 @@
+(async function() {
+    // SheetJS読み込み
+    if (!window.XLSX) {
+        const scr = document.createElement('script');
+        scr.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+        document.head.appendChild(scr);
+        await new Promise(res => scr.onload = res);
+    }
+
+    if (document.getElementById('multiUrlInputBox')) return;
+    const box = document.createElement('div');
+    box.id = 'multiUrlInputBox';
+    box.style = 'position:fixed;top:10px;left:10px;z-index:99999;background:#222;padding:16px;color:#fff;border-radius:8px;';
+    box.innerHTML = `
+        <textarea id="urlListInput" rows="7" cols="60" placeholder="URLを改行で複数入力"></textarea><br>
+        <button id="execBtn">実行</button>
+        <button id="closeBoxBtn">閉じる</button>
+        <span id="multiUrlStatus"></span>
+    `;
+    document.body.appendChild(box);
+
+    document.getElementById('closeBoxBtn').onclick = () => box.remove();
+
+    document.getElementById('execBtn').onclick = async function() {
+        const out = [];
+        const urlList = document.getElementById('urlListInput').value.split('\n').map(s => s.trim()).filter(Boolean);
+        const status = document.getElementById('multiUrlStatus');
+        status.textContent = '処理中……';
+        for (let i = 0; i < urlList.length; ++i) {
+            try {
+                await fetch(urlList[i], {credentials: "include"});
+                const res = await fetch('https://wdrb.work/otherside/field.php', {credentials: "include"});
+                const text = await res.text();
+                const dom = new DOMParser().parseFromString(text, 'text/html');
+                const areas = dom.querySelectorAll('.section_areas.places .arealist');
+                areas.forEach(area => {
+                    const author = area.querySelector('.area_status small.gray:last-child');
+                    if (!author || !author.textContent.includes('作成者 Eno.0')) return;
+                    const name = area.querySelector('.area_status b')?.textContent?.trim() ?? '';
+                    const desc = area.querySelector('.area_status span')?.textContent?.trim() ?? '';
+                    const ahref = area.querySelector('a[href*="p_id="]')?.getAttribute('href');
+                    const a_id = ahref ? new URLSearchParams(ahref.split('?')[1]).get('p_id') : '';
+                    const url = a_id ? `https://wdrb.work/otherside/area.php?p_id=${a_id}&list=8` : '';
+                    if (name && a_id) out.push({name, desc, a_id, url});
+                });
+                status.textContent = `処理中…… (${i+1}/${urlList.length})`;
+            } catch (e) {
+                status.textContent = `エラー: ${urlList[i]} (${e})`;
+            }
+        }
+        if (out.length === 0) {
+            status.textContent = '対象エリアなし or 取得失敗';
+            return;
+        }
+        status.textContent = '出力準備中……';
+        // XLSX生成
+        const ws = XLSX.utils.aoa_to_sheet([['名前','概要','a_id','URL']]);
+        // 1行ずつハイパーリンク
+        out.forEach((row, i) => {
+            // ハイパーリンクオブジェクトでセル生成
+            ws[`A${i+2}`] = {
+                t: 's',
+                v: row.name,
+                l: { Target: row.url }
+            };
+            ws[`B${i+2}`] = { t: 's', v: row.desc };
+            ws[`C${i+2}`] = { t: 's', v: row.a_id };
+            ws[`D${i+2}`] = { t: 's', v: row.url };
+        });
+        ws['!ref'] = `A1:D${out.length+1}`;
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "areas");
+        XLSX.writeFile(wb, "area_list_link.xlsx");
+        status.textContent = '完了（.xlsxで出力／A列はリンク）';
+    };
+})();
