@@ -1,0 +1,82 @@
+(async () => {
+  // xlsx.js CDN自動読込
+  if (!window.XLSX) {
+    await new Promise((resolve, reject) => {
+      let script = document.createElement("script");
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+    console.log("xlsx.js loaded");
+  }
+
+  // 進捗表示
+  let progress = document.createElement("div");
+  progress.style.cssText = "position:fixed;top:0;left:0;background:#222;color:#fff;padding:4px 8px;z-index:99999;font-size:14px";
+  progress.textContent = "準備中…";
+  document.body.appendChild(progress);
+
+  const results = [["ENO", "名前", "最終発言"]];
+  const start = 1;
+  const end = 2089;
+
+  for (let eno = start; eno <= end; eno++) {
+    progress.textContent = `取得中: ENO.${eno} / ${end}…`;
+
+    try {
+      let res = await fetch(`https://wdrb.work/otherside/profile.php?eno=${eno}`, {
+        credentials: "omit",
+        cache: "no-store"
+      });
+      if (!res.ok) throw new Error("HTTP error");
+      let html = await res.text();
+      let dom = new DOMParser().parseFromString(html, "text/html");
+
+      // ENOと名前
+      let charaDiv = dom.querySelector("div.chara_name");
+      let enoStr = "";
+      let name = "";
+      if (charaDiv) {
+        let m = charaDiv.textContent.match(/ENO\.([0-9]+)/);
+        enoStr = m ? m[1] : "";
+        let h4 = charaDiv.querySelector("h4");
+        name = h4 ? h4.textContent.trim() : "";
+      }
+
+      // 最終発言
+      let talkDiv = dom.querySelector("div.talk_list");
+      let chatTime = "";
+      if (talkDiv) {
+        let chats = Array.from(talkDiv.querySelectorAll("div.chat_shout.chat"));
+        if (chats.length > 0) {
+          let latest = chats[0];
+          let timeDiv = latest.querySelector(".chat_time");
+          chatTime = timeDiv ? timeDiv.textContent.trim() : "";
+        }
+      }
+      results.push([enoStr || eno.toString(), name, chatTime]);
+    } catch (e) {
+      results.push([eno.toString(), "", ""]);
+    }
+    // 完全同期型
+  }
+
+  progress.textContent = "xlsx作成中…";
+  let ws = XLSX.utils.aoa_to_sheet(results);
+  let wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Profiles");
+
+  let wbout = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+  let blob = new Blob([wbout], { type: "application/octet-stream" });
+
+  let dl = document.createElement("a");
+  dl.href = URL.createObjectURL(blob);
+  dl.download = `profiles_${start}_${end}.xlsx`;
+  dl.textContent = "→ .xlsxファイルをダウンロード";
+  dl.style.cssText = "display:block;margin:12px;padding:6px 12px;background:#1976d2;color:#fff;text-align:center;border-radius:6px;font-size:18px;z-index:99999";
+  progress.textContent = "完了！xlsxダウンロード可能";
+  progress.appendChild(dl);
+
+  console.log("全件完了");
+})();
