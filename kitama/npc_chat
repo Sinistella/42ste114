@@ -1,0 +1,60 @@
+(async () => {
+    // xlsxライブラリを動的ロード
+    if (!window.XLSX) {
+        await new Promise(r => {
+            let s = document.createElement("script");
+            s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+            s.onload = r;
+            document.head.appendChild(s);
+        });
+    }
+
+    const rows = [];
+    // ヘッダ
+    rows.push(["No", "id", "区画", "エリア", "時間", "発言内容"]);
+
+    // 各発言ブロックを走査
+    document.querySelectorAll('.talk_list > div[class*="chat_shout"]').forEach((div, idx) => {
+        // id
+        const rawId = div.id.replace(/^id_/, "");
+
+        // chat_loc
+        const locElem = div.querySelector(".chat_loc");
+        let 区画 = "", エリア = "", サブ = "";
+        if (locElem) {
+            const locText = locElem.textContent.replace(/[\[\]]/g, "|").split("|").filter(Boolean);
+            区画 = locText[0] || "";
+            エリア = locText[1] || "";
+            ソーン = locText[2] || "";
+        }
+
+        // chat_time
+        const timeElem = div.querySelector(".chat_time");
+        const 時間 = timeElem ? timeElem.textContent : "";
+
+        // chat_nakami
+        const chatElem = div.querySelector(".chat_nakami");
+        let 発言内容 = "";
+        if (chatElem) {
+            発言内容 = chatElem.textContent.trim().replace(/\s+/g, " ");
+        }
+
+        // 出力
+        rows.push([
+            idx + 1, rawId, 区画, エリア, 時間, 発言内容
+        ]);
+    });
+
+    // XLSX
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "chat");
+
+    // ダウンロード
+    const wbout = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+    const blob = new Blob([wbout], { type: "application/octet-stream" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "chat_log.xlsx";
+    a.click();
+})();
