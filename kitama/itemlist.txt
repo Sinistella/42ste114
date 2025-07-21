@@ -39,20 +39,25 @@ document.body.appendChild(script);
         let allRows = [
             ["ID","type","アイテム名（クリックで店へ）","price","red","yellow","blue","green","buff","flavor"]
         ];
-        function getTag(itemContent, cls) {
+
+        // 1色につき全タグを改行区切りで取得
+        function getTagsAll(itemContent, cls) {
             let sel = `span.${cls.join('.')}`;
-            let el = itemContent.querySelector(sel);
-            return el ? el.textContent.trim() : "";
+            let els = Array.from(itemContent.querySelectorAll(sel));
+            return els.map(el => el.textContent.trim()).join('\n');
         }
-        function getCapBuff(itemContent) {
+        // buff（cap/buffタグ）も複数抽出
+        function getCapBuffAll(itemContent) {
+            let arr = [];
             for (let el of itemContent.querySelectorAll('span')) {
                 let classList = Array.from(el.classList);
                 if (classList.length === 3 && classList.includes("tag") && classList.includes("cap") && classList.includes("buff")) {
-                    return el.textContent.trim();
+                    arr.push(el.textContent.trim());
                 }
             }
-            return "";
+            return arr.join('\n');
         }
+
         for (let url of urls) {
             let res = await fetch(url, {credentials: "include"});
             let text = await res.text();
@@ -78,11 +83,12 @@ document.body.appendChild(script);
                     name = tmp;
                 }
                 let itemContent = li.querySelector("div.item-content");
-                let tagRed = getTag(itemContent, ["tag","red"]);
-                let tagYellow = getTag(itemContent, ["tag","yellow"]);
-                let tagBlue = getTag(itemContent, ["tag","blue"]);
-                let tagGreen = getTag(itemContent, ["tag","green"]);
-                let tagCapBuff = getCapBuff(itemContent);
+                let tagRed    = getTagsAll(itemContent, ["tag","red"]);
+                let tagYellow = getTagsAll(itemContent, ["tag","yellow"]);
+                let tagBlue   = getTagsAll(itemContent, ["tag","blue"]);
+                let tagGreen  = getTagsAll(itemContent, ["tag","green"]);
+                let tagCapBuff = getCapBuffAll(itemContent);
+
                 // flavor text
                 let flavor = "";
                 if (itemContent) {
