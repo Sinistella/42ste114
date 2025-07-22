@@ -1,0 +1,83 @@
+(function() {
+    // SHOPタブが開いていなければ起動しない
+    const shopTab = document.querySelector('#shop_button.selected');
+    if (!shopTab) {
+        alert('SHOPタブが開かれていません');
+        return;
+    }
+
+    // 購入進捗UI
+    let stat = document.createElement('div');
+    stat.id = 'shop-buy-stat';
+    stat.style.position = 'fixed';
+    stat.style.top = '48px';
+    stat.style.right = '44px';
+    stat.style.background = '#222';
+    stat.style.color = '#fff';
+    stat.style.padding = '14px';
+    stat.style.zIndex = 99999;
+    stat.style.borderRadius = '12px';
+    stat.style.boxShadow = '0 8px 24px #000b';
+    stat.style.maxWidth = '320px';
+    stat.innerHTML = '<b>SHOP購入進捗</b><br><span id="shop-buy-log">選択待ち</span>　<button id="shop-buy-close">×</button>';
+    document.body.appendChild(stat);
+    document.getElementById('shop-buy-close').onclick = ()=>stat.remove();
+
+    // 購入関数
+    async function buyItem(shopId, count, name) {
+        const log = document.getElementById('shop-buy-log');
+        if (!shopId || !count || count < 1) {
+            log.textContent = '入力値を確認';
+            return;
+        }
+        log.textContent = `『${name}』購入中…`;
+        let ok = 0, ng = 0;
+        for (let i = 0; i < count; ++i) {
+            try {
+                let body = `shop_item_id=${encodeURIComponent(shopId)}&buy_item_submit=${encodeURIComponent('購入する')}`;
+                let res = await fetch('/otherside/shop.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                        'Origin': 'https://wdrb.work',
+                        'Referer': location.href
+                    },
+                    body: body,
+                    credentials: 'same-origin'
+                });
+                let text = await res.text();
+                if (res.ok && /(購入しました|所持数|エラーなし)/.test(text)) ok++;
+                else ng++;
+                log.textContent = `『${name}』${i+1}/${count} 購入中…(成功${ok},失敗${ng})`;
+                await new Promise(r => setTimeout(r, 400));
+            } catch(e) {
+                ng++;
+                log.textContent = `『${name}』${i+1}/${count} 購入中…(成功${ok},失敗${ng})`;
+            }
+        }
+        log.textContent = `『${name}』購入完了（成功${ok}, 失敗${ng}）`;
+    }
+
+    // アイテム一覧
+    const items = Array.from(document.querySelectorAll('ul.shop_item_list > li.shop_sale_item[data-shop-id]'));
+    // 既存クリックを妨害しないよう一度解除
+    items.forEach(li => li.style.cursor = "pointer");
+    items.forEach(li => {
+        li.addEventListener('click', function(ev) {
+            // 他のボタンやフォームには反応しない
+            if (ev.target.tagName.match(/BUTTON|INPUT|FORM/)) return;
+            const id = li.getAttribute('data-shop-id');
+            const name = (li.querySelector('.item_name') || li.querySelector('.item_name_area') || li).textContent.trim();
+            let num = prompt(`「${name}」をいくつ購入しますか？（半角数字）`, "1");
+            if (num === null) return; //キャンセル
+            num = parseInt(num, 10);
+            if (isNaN(num) || num < 1) {
+                document.getElementById('shop-buy-log').textContent = "個数エラー";
+                return;
+            }
+            buyItem(id, num, name);
+            ev.stopPropagation();
+        }, false);
+    });
+})();
