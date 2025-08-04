@@ -8,7 +8,7 @@
 // @connect      raw.githubusercontent.com
 // ==/UserScript==
 
-const CSV_URL = 'https://raw.githubusercontent.com/Sinistella/42ste114/main/kitama/arealist.csv';
+const CSV_URL = 'https://raw.githubusercontent.com/Sinistella/42ste114/main/kitama/arealist.csv?' + Date.now();
 
 (function() {
     'use strict';
