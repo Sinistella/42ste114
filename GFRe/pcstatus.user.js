@@ -9,7 +9,6 @@
 // ==/UserScript==
 
 (function () {
-  // 1) 左上ミニUI
   const bar = document.createElement("div");
   bar.id = "gfps-bar";
   bar.style.cssText = [
@@ -43,7 +42,6 @@
   bar.append(label,input,btn);
   document.body.appendChild(bar);
 
-  // 2) モーダルと背景
   const overlay = document.createElement("div");
   overlay.id = "gfps-overlay";
   overlay.style.cssText = [
@@ -62,7 +60,6 @@
     "transition:opacity .15s ease, transform .15s ease"
   ].join(";");
 
-  // ヘッダ
   const header = document.createElement("div");
   header.style.cssText = [
     "display:flex","align-items:center","justify-content:space-between",
@@ -80,14 +77,12 @@
   actions.appendChild(closeX);
   header.append(title, actions);
 
-  // 本体
   const body = document.createElement("div");
   body.style.cssText = [
     "flex:1","display:grid","grid-template-columns:1fr 1.3fr","gap:14px",
     "padding:12px","background:#fffdf8","border-bottom-left-radius:12px","border-bottom-right-radius:12px"
   ].join(";");
 
-  // 左右カラム
   const leftWrap = document.createElement("div");
   leftWrap.className = "gfps-left";
   leftWrap.style.cssText = "overflow:auto;border:1px solid #e8e2d6;background:#fff;border-radius:10px;padding:10px;";
@@ -96,7 +91,6 @@
   rightWrap.className = "gfps-right";
   rightWrap.style.cssText = "overflow:auto;border:1px solid #e8e2d6;background:#fff;border-radius:10px;padding:10px;";
 
-  // スキル表示用の軽量スタイル
   const style = document.createElement("style");
   style.textContent = `
   #gfps-modal #skillsetdata{min-height:580px}
@@ -118,15 +112,12 @@
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
 
-  // 背景クリックと Esc で閉じる
   overlay.addEventListener("click",(e)=>{ if(e.target === overlay) closeModal(); });
   window.addEventListener("keydown",(e)=>{ if(isOpen() && e.key === "Escape") closeModal(); });
 
-  // 公開関数
   window.GFPS_open = openModal;
   window.GFPS_close = closeModal;
 
-  // 3) データ取得系
   const ALLOWED_TAGS = new Set(["DIV","SPAN","SMALL","B","I","BR","HR","IMG","A"]);
   const ALLOWED_ATTR = new Set(["class","style","src","width","height","href","title"]);
   function sanitizeFragment(html){
@@ -189,7 +180,6 @@
     }catch(e){ return null; }
   }
 
-  // 4) 開閉とロード
   function isOpen(){ return overlay.style.display === "flex"; }
 
   async function openModal(){
