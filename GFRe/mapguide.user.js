@@ -3,7 +3,7 @@
 // @namespace    https://github.com/Sinistella/42ste114
 // @version      0.2.0
 // @description  マップの座標を表示し、対象セルを赤枠で強調
-// @match        https://soraniwa.428.st/gf/?mode=action
+// @match        https://soraniwa.428.st/gf/*
 // ==/UserScript==
 
 (function () {
