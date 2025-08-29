@@ -1,4 +1,3 @@
-/* GFReStopper core v2.0.0 — freeze .gif/.apng to first frame (with hooks) */
 (function () {
   if (window.GFReStopper) return;
 
@@ -52,7 +51,7 @@
   }
 
   function fetchFirstFrame(url, cb){
-    // TampermonkeyのGM_xmlhttpRequestが必要（@grantが無いと未定義）
+
     if (typeof GM_xmlhttpRequest !== "function"){
       log("GM_xmlhttpRequest not available");
       cb(null);
@@ -153,7 +152,7 @@
     Element.prototype.setAttribute = function(name, value){
       if (this instanceof HTMLImageElement && typeof value === "string" && (name === "src" || name === "srcset") && isAnimUrl(value)){
         try{ this.removeAttribute("srcset"); }catch{}
-        this.src = value; // 上書きしたsetterに流れる
+        this.src = value;
         return;
       }
       return origSetAttribute.call(this, name, value);
@@ -184,13 +183,12 @@
     cssProto.__gfre_hooked__ = 1;
   }
 
-  // 初期走査と監視
   function freezeAll(root=document){
     root.querySelectorAll("img").forEach(img => {
       const u = img.currentSrc || img.src || "";
       if (isAnimUrl(u)) stopImgToFirstFrame(img, u);
     });
-    // 背景はcomputedから拾い、setProperty経由に通す
+
     root.querySelectorAll("*").forEach(el => {
       const cs = getComputedStyle(el);
       const bg = cs.backgroundImage;
@@ -216,7 +214,7 @@
               const u2 = im.currentSrc || im.src || "";
               if (isAnimUrl(u2)) stopImgToFirstFrame(im, u2);
             });
-            // 背景も軽くなめる
+
             const cs = getComputedStyle(n);
             const bg = cs.backgroundImage;
             if (bg && bg !== "none" && animCssRe.test(bg)){
