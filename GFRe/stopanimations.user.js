@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GFRe Stop Animations
 // @namespace    gfre.stop.movie
-// @version      2.0.0
+// @version      1.0.1
 // @description  アニメーション効果停止
 // @match        https://soraniwa.428.st/gf/*
 // @run-at       document-start
