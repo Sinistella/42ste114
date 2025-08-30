@@ -18,7 +18,7 @@
   const K_CALL3 = 'gfre:add5:call3';
   const K_KADAN = 'gfre:add5:kadan';
 
-  const HIDE_ON = new Set(['btn2','btn4','btn6']); // 探索, ワープ, 全体マップ
+  const HIDE_ON = new Set(['btn2','btn4','btn6']);
 
   function onReady(fn){ if(document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
 
@@ -26,7 +26,6 @@
     const base = document.querySelector('input[type="submit"][value="行動する"]');
     if (!base) return;
 
-    // 5ボタン追加（右側に並べるため逆順で挿入）
     if (!document.getElementById('__gfre_add5_marker__')) {
       ['設定','花壇','呼出3','呼出2','呼出1'].forEach(v => {
         base.insertAdjacentHTML('afterend', ' <input type="submit" class="__gfre_btn" style="display:inline;" value="'+ v +'">');
@@ -49,23 +48,20 @@
     btnConfig?.addEventListener('click', (e) => { e.preventDefault(); openConfig(); });
 
     buildModal();
-
-    // 無ちらつき表示制御
     injectHiddenClass();
-    // 1) ユーザー操作直後に先に切替（pointerdown捕捉）
+
     document.addEventListener('pointerdown', (e) => {
       const sb = e.target.closest?.('.switchbutton');
       if (!sb || !sb.id) return;
-      toggleExtra(!HIDE_ON.has(sb.id)); // 押下した時点で即反映
+      toggleExtra(!HIDE_ON.has(sb.id)); 
     }, true);
-    // 2) クラス変化を監視（プログラム的切替に対応）
+
     const mo = new MutationObserver(() => syncByActiveTab());
     mo.observe(document.documentElement, { subtree:true, attributes:true, attributeFilter:['class'] });
-    // 初期同期
+
     syncByActiveTab();
   });
 
-  // d1〜d3へ代入
   function applyCall(arr){
     const [v1,v2,v3] = norm3(arr).map(normalizeNum);
     setValue('#d1', v1);
@@ -79,7 +75,6 @@
     setValue('#d3', '');
   }
 
-  // 設定モーダル
   function buildModal(){
     if (document.getElementById('__gfre_cfg_wrap__')) return;
 
@@ -112,7 +107,6 @@
     wrap.addEventListener('click', (e)=>{ if(e.target===wrap) closeConfig(); });
     pane.querySelector('#__cfg_cancel').addEventListener('click', closeConfig);
     pane.querySelector('#__cfg_save').addEventListener('click', saveConfig);
-
     window.__GFRE_OPEN_CFG__ = openConfig;
 
     function row(label, ids){
@@ -153,7 +147,6 @@
     }
   }
 
-  // 可視制御
   function injectHiddenClass(){
     if (document.getElementById('__gfre_style_hidden__')) return;
     const st = document.createElement('style');
@@ -176,11 +169,9 @@
     toggleExtra(!HIDE_ON.has(id));
   }
 
-  // 開閉
   function openConfig(){ const w = document.getElementById('__gfre_cfg_wrap__'); if(w) w.style.display='flex'; }
   function closeConfig(){ const w = document.getElementById('__gfre_cfg_wrap__'); if(w) w.style.display='none'; }
 
-  // 小物
   function findBtn(label){ return Array.from(document.querySelectorAll('input[type="submit"]')).find(b => b.value === label); }
   function setValue(sel, v){ const el = document.querySelector(sel); if(el!=null) el.value = v ?? ''; }
   function set(sel, v){ const el = document.querySelector(sel); if(el!=null) el.value = v ?? ''; }
