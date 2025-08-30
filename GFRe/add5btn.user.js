@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GFRe add 5btn
 // @namespace    gfre.add.5btn
-// @version      0.3.0
+// @version      0.4.0
 // @description  呼出＆花壇ボタンを追加
 // @match        https://soraniwa.428.st/gf/*
 // @run-at       document-idle
@@ -18,15 +18,17 @@
   const K_CALL3 = 'gfre:add5:call3';
   const K_KADAN = 'gfre:add5:kadan';
 
+  const HIDE_ON = new Set(['btn2','btn4','btn6']); // 探索, ワープ, 全体マップ
+
   function onReady(fn){ if(document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
 
   onReady(() => {
     const base = document.querySelector('input[type="submit"][value="行動する"]');
     if (!base) return;
 
+    // 5ボタン追加（右側に並べるため逆順で挿入）
     if (!document.getElementById('__gfre_add5_marker__')) {
-      const labels = ['設定', '花壇', '呼出3', '呼出2', '呼出1'];
-      labels.forEach(v => {
+      ['設定','花壇','呼出3','呼出2','呼出1'].forEach(v => {
         base.insertAdjacentHTML('afterend', ' <input type="submit" class="__gfre_btn" style="display:inline;" value="'+ v +'">');
       });
       const m = document.createElement('span');
@@ -47,8 +49,23 @@
     btnConfig?.addEventListener('click', (e) => { e.preventDefault(); openConfig(); });
 
     buildModal();
+
+    // 無ちらつき表示制御
+    injectHiddenClass();
+    // 1) ユーザー操作直後に先に切替（pointerdown捕捉）
+    document.addEventListener('pointerdown', (e) => {
+      const sb = e.target.closest?.('.switchbutton');
+      if (!sb || !sb.id) return;
+      toggleExtra(!HIDE_ON.has(sb.id)); // 押下した時点で即反映
+    }, true);
+    // 2) クラス変化を監視（プログラム的切替に対応）
+    const mo = new MutationObserver(() => syncByActiveTab());
+    mo.observe(document.documentElement, { subtree:true, attributes:true, attributeFilter:['class'] });
+    // 初期同期
+    syncByActiveTab();
   });
 
+  // d1〜d3へ代入
   function applyCall(arr){
     const [v1,v2,v3] = norm3(arr).map(normalizeNum);
     setValue('#d1', v1);
@@ -62,6 +79,7 @@
     setValue('#d3', '');
   }
 
+  // 設定モーダル
   function buildModal(){
     if (document.getElementById('__gfre_cfg_wrap__')) return;
 
@@ -135,9 +153,34 @@
     }
   }
 
+  // 可視制御
+  function injectHiddenClass(){
+    if (document.getElementById('__gfre_style_hidden__')) return;
+    const st = document.createElement('style');
+    st.id = '__gfre_style_hidden__';
+    st.textContent = '.gfre-hidden{display:none !important;}';
+    document.head.appendChild(st);
+  }
+  function extraButtons(){
+    return document.querySelectorAll('.__gfre_btn');
+  }
+  function toggleExtra(show){
+    extraButtons().forEach(el => el.classList.toggle('gfre-hidden', !show));
+  }
+  function activeTabId(){
+    const act = document.querySelector('.switchbutton.enablebtn');
+    return act?.id || '';
+  }
+  function syncByActiveTab(){
+    const id = activeTabId();
+    toggleExtra(!HIDE_ON.has(id));
+  }
+
+  // 開閉
   function openConfig(){ const w = document.getElementById('__gfre_cfg_wrap__'); if(w) w.style.display='flex'; }
   function closeConfig(){ const w = document.getElementById('__gfre_cfg_wrap__'); if(w) w.style.display='none'; }
 
+  // 小物
   function findBtn(label){ return Array.from(document.querySelectorAll('input[type="submit"]')).find(b => b.value === label); }
   function setValue(sel, v){ const el = document.querySelector(sel); if(el!=null) el.value = v ?? ''; }
   function set(sel, v){ const el = document.querySelector(sel); if(el!=null) el.value = v ?? ''; }
@@ -169,7 +212,7 @@
     input.addEventListener('paste', () => { setTimeout(fix, 0); });
   }
 
-  // 任意の値をEno正規形へ。空は空のまま返す。
+  // 任意値→Eno正規形。空は空のまま返す。
   function normalizeNum(v){
     let s = typeof v === 'string' ? v : '';
     s = s.replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
@@ -181,22 +224,4 @@
     if (n > 9999) n = 9999;
     return String(n);
   }
-  // 追加ボタンの表示制御
-  function updateExtraButtonsVisibility() {
-    const active = document.querySelector('.switchbutton.enablebtn');
-    const hideIds = ['btn2','btn4','btn6']; // 探索,ワープ,全体マップ
-    const shouldHide = active && hideIds.includes(active.id);
-
-    document.querySelectorAll('.__gfre_btn').forEach(el => {
-      el.style.display = shouldHide ? 'none' : 'inline';
-    });
-  }
-  // タブクリックで状態更新
-  document.addEventListener('click', e => {
-    if (e.target.closest('.switchbutton')) {
-      setTimeout(updateExtraButtonsVisibility, 50);
-    }
-  });
-  // 初期表示チェック
-  updateExtraButtonsVisibility();
 })();
