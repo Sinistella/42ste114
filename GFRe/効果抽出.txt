@@ -1,0 +1,115 @@
+(async () => {
+  // XLSX読込（失敗しても続行）
+  async function ensureXLSX() {
+    if (window.XLSX) return true;
+    try {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+        s.onload = () => resolve(true);
+        s.onerror = () => reject(new Error("XLSX load error"));
+        document.head.appendChild(s);
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // テキスト正規化
+  const norm = s => (s || "").replace(/\s+/g, " ").trim();
+
+  // 「/ 効果量～」の末尾除去
+  const stripEffectTail = s => s.replace(/\s*\/\s*効果量.*$/u, "").trim();
+
+  // fulldescを順走査して「直前テキスト＋直後<small>」の組を抽出
+  const pairs = [];
+  document.querySelectorAll("span.fulldesc").forEach(span => {
+    const nodes = Array.from(span.childNodes);
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      // 用語候補はテキストか<b>などの要素内テキスト
+      let term = "";
+      if (n.nodeType === Node.TEXT_NODE) {
+        term = norm(n.textContent);
+      } else if (n.nodeType === Node.ELEMENT_NODE) {
+        // タグ内テキストが用語として置かれている場合に対応
+        if (/^(b|strong|span)$/i.test(n.nodeName)) term = norm(n.textContent);
+      }
+      if (!term) continue;
+
+      // 次以降で<small>を探す（<br>や空白はスキップ）
+      let j = i + 1;
+      while (j < nodes.length) {
+        const m = nodes[j];
+        if (m.nodeType === Node.TEXT_NODE && !norm(m.textContent)) {
+          j++;
+          continue;
+        }
+        if (m.nodeType === Node.ELEMENT_NODE && m.nodeName === "BR") {
+          j++;
+          continue;
+        }
+        if (m.nodeType === Node.ELEMENT_NODE && m.nodeName === "SMALL") {
+          const desc = stripEffectTail(norm(m.textContent));
+          if (term && desc) pairs.push([term, desc]);
+        }
+        // いずれにせよこの用語ブロックは終了とみなし次へ
+        break;
+      }
+    }
+  });
+
+  // 重複名を除外（先勝ち）
+  const seen = new Set();
+  const rows = [];
+  for (const [name, desc] of pairs) {
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    rows.push({ 名前: name, 説明: desc });
+  }
+
+  if (rows.length === 0) {
+    console.warn("抽出ゼロ。DOM構造が想定外の可能性があります。");
+    return;
+  }
+
+  // まずは名前でソート
+  rows.sort((a, b) => a.名前.localeCompare(b.名前, "ja"));
+
+  // XLSXを試み、失敗したらCSVでフォールバック
+  const okX = await ensureXLSX();
+  if (okX && window.XLSX) {
+    try {
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "用語一覧");
+      const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([wbout], { type: "application/octet-stream" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "用語一覧_戦闘設定.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      console.log(`完成: ${rows.length}件をExcelに出力しました。`);
+      return;
+    } catch (e) {
+      console.warn("XLSX出力に失敗。CSVにフォールバックします。", e);
+    }
+  }
+
+  // CSVフォールバック
+  const esc = v => `"${String(v).replace(/"/g, '""')}"`;
+  const csv = ["名前,説明"]
+    .concat(rows.map(r => `${esc(r.名前)},${esc(r.説明)}`))
+    .join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "用語一覧_戦闘設定.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  console.log(`完成: ${rows.length}件をCSVで出力しました。`);
+})();
