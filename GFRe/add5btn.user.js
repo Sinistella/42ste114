@@ -87,7 +87,7 @@
     pane.style.cssText = 'min-width:340px;max-width:90vw;background:#fff;border:1px solid #ddd;border-radius:12px;padding:14px;box-shadow:0 10px 24px rgba(0,0,0,.18);font:14px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Meiryo,system-ui,sans-serif';
 
     pane.innerHTML = [
-      '<div style="font-weight:700;margin-bottom:6px;">Quick設定</div>',
+      '<div style="font-weight:700;margin-bottom:6px;">Eno登録</div>',
       row('呼出1', ['__in_c11','__in_c12','__in_c13']),
       row('呼出2', ['__in_c21','__in_c22','__in_c23']),
       row('呼出3', ['__in_c31','__in_c32','__in_c33']),
