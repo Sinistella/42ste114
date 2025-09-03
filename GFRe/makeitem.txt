@@ -1,0 +1,74 @@
+(() => {
+  const WAIT_MS = 1000; // 1秒間隔
+
+  const $all = (s, p=document) => Array.from(p.querySelectorAll(s));
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+  function ensureIframe() {
+    let fr = document.getElementById('bulk_make_iframe');
+    if (!fr) {
+      fr = document.createElement('iframe');
+      fr.id = 'bulk_make_iframe';
+      fr.name = 'bulk_make_iframe';
+      fr.style.display = 'none';
+      document.body.appendChild(fr);
+    }
+    return fr;
+  }
+
+  async function submitViaIframe(form) {
+    const iframe = ensureIframe();
+    const origTarget = form.target;
+    const done = new Promise(resolve => {
+      const onload = () => {
+        iframe.removeEventListener('load', onload);
+        resolve();
+      };
+      iframe.addEventListener('load', onload, { once: true });
+    });
+    form.target = iframe.name;
+    form.submit();
+    await done;
+    form.target = origTarget || '';
+  }
+
+  async function runLoop(form, count) {
+    for (let i = 0; i < count; i++) {
+      await submitViaIframe(form);
+      await sleep(WAIT_MS);
+      console.log(`[make] 送信 ${i + 1}/${count}`);
+    }
+    console.log(`[make] 完了 合計:${count}`);
+  }
+
+  function bind() {
+    // 「action=make」「rcnoあり」の制作フォームにだけフック
+    $all('form').forEach(form => {
+      const act = form.querySelector('input[name="action"][value="make"]');
+      const rc  = form.querySelector('input[name="rcno"]');
+      const btn = form.querySelector('input[type="submit"]');
+      if (!act || !rc || !btn) return;
+      if (form.dataset.bulkMakeBound === '1') return;
+      form.dataset.bulkMakeBound = '1';
+
+      // 送信ボタン押下時に割り込み
+      btn.addEventListener('click', ev => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const ans = prompt('幾つ作りますか？', '1');
+        if (ans == null) return;
+        const n = parseInt(String(ans).replace(/[^\d]/g, ''), 10);
+        if (!n || n < 1) { console.log('[make] 中止 入力不正'); return; }
+        // rcnoはフォームのhidden値をそのまま使用
+        console.log(`[make] 開始 rcno=${rc.value} 回数=${n}`);
+        runLoop(form, n);
+      }, { capture: true });
+    });
+  }
+
+  bind();
+  // 動的にパネルが切り替わる場合に備えて外部公開
+  window.bulkMakeBind = bind;
+
+  console.log('制作ボタンに数量入力をフックしました。制作ボタンを押すと「幾つ作りますか？」が表示されます。');
+})();
