@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GFRe 共有スプシ転記
 // @namespace    gfre.silver.song
-// @version      1.5.1
+// @version      1.5.3
 // @description  現在座標(x,y)の探索データを対応セルのメモ欄へ転記
 // @match        https://soraniwa.428.st/gf/*
 // @run-at       document-end
@@ -122,6 +122,16 @@
     const x = parseInt(normalizeText(xNode.textContent), 10);
     const y = parseInt(normalizeText(yNode.textContent), 10);
     const items=parseItemsFromDrop(dropNode);
+
+    const FORBIDDEN_KEYWORDS = ['アイテム', '何か'];
+    const hasForbiddenItem = items.some(item =>
+        FORBIDDEN_KEYWORDS.some(keyword => item.includes(keyword))
+    );
+    if (hasForbiddenItem) {
+        toast('未探索のため転記できません');
+        return;
+    }
+
     if(!Number.isInteger(x) || !Number.isInteger(y) || items.length === 0){
       toast('データ不足');
       return;
