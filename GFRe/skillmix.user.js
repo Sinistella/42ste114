@@ -144,7 +144,7 @@
     let traitNameHTML = '';
     if (isResult) {
       const combined = buildHead(method, baseId, mixId, customName);
-
+      // 先頭のタイプ星アイコンを除去して「[性質] スキル名」に整形
       traitNameHTML = combined.replace(/^<span[^>]*class="type[^"]*"[^>]*>.*?<\/span>\s*/, '');
     } else {
       const tinfo = optInfo(id);
@@ -224,13 +224,13 @@
     return { tbody: qs('#mix-preview-tbody'), table: qs('#mix-preview-table') };
   }
 
-  // スタイル
+  // スタイル（※UIは変えず、冗長だけ削除）
   const style = document.createElement('style');
   style.textContent = `
+    /* 合成列（1列目）は .mixcol で中央寄せ・左右パディング除去 */
     #mix-preview-table td.mixcol { padding-left: 0; padding-right: 0; text-align: center; }
-    #mix-preview-table td.mixcol .marks { display: none; }
 
-    #mix-preview-table tbody td:nth-child(1),
+    /* データ行: No., タイプ, 発動数, Rank を中央寄せ・左右パディング除去 */
     #mix-preview-table tbody td:nth-child(2),
     #mix-preview-table tbody td:nth-child(3),
     #mix-preview-table tbody td:nth-child(6),
@@ -241,6 +241,18 @@
     }
   `;
   document.head.appendChild(style);
+
+  // 横幅追従（デバウンス付き）
+  const updateWidth = () => {
+    const skillTable = qs('#skill');
+    const tgt = qs('#mix-preview-table');
+    if (!skillTable || !tgt) return;
+    const w = Math.round(skillTable.getBoundingClientRect().width);
+    if (w) tgt.style.width = w + 'px';
+  };
+  const debounce = (fn, wait) => {
+    let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), wait); };
+  };
 
   // 更新
   let raf = 0;
@@ -254,7 +266,7 @@
       const meth   = ctrl.method();
       const cname  = ctrl.nameInp?.value || '';
 
-      // optionキャッシュ更新
+      // optionキャッシュ更新（差分のみ追加）
       qsa('select[name="kouhai_base"] option, select[name="kouhai_mix"] option').forEach(o => {
         const v = o.value;
         if (v && v !== '0' && !optCache.has(v)) {
@@ -287,16 +299,9 @@
     if (ctrl.nameInp) ctrl.nameInp.addEventListener('input', onChange, { passive: true });
 
     scheduleUpdate(ctrl, out);
+    updateWidth();
 
-    // 横幅追従
-    window.addEventListener('resize', () => {
-      const skillTable = qs('#skill');
-      const tgt = qs('#mix-preview-table');
-      if (skillTable && tgt) {
-        const w = Math.round(skillTable.getBoundingClientRect().width);
-        if (w) tgt.style.width = w + 'px';
-      }
-    }, { passive: true });
+    window.addEventListener('resize', debounce(updateWidth, 150), { passive: true });
   }
 
   if (qs('select[name="kouhai_base"]')) {
