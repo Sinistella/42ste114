@@ -103,7 +103,7 @@
     if (!t) {
       t = document.createElement('div');
       t.id = 'gfre-toast';
-      t.style.cssText = 'position:fixed;left:50%;bottom:64px;transform:translateX(-50%);background:#333;color:${CFG.markColor};padding:8px 12px;border-radius:6px;z-index:2147483647;font-size:13px;opacity:0;transition:opacity .15s;';
+      t.style.cssText = 'position:fixed;left:50%;bottom:64px;transform:translateX(-50%);background:#333;color:#fff;padding:8px 12px;border-radius:6px;z-index:2147483647;font-size:13px;opacity:0;transition:opacity .15s;';
       document.body.appendChild(t);
     }
     t.textContent = msg;
