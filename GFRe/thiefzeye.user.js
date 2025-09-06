@@ -43,7 +43,7 @@
     { id: 'Fragments_of_Power', icon: 'ri-sword-line',    tip: '力のかけらの位置を表示', type: 'cat', cat: 'power'  },
     { id: 'Raw_Stone',          icon: 'ri-copper-diamond-line',  tip: '原石の位置を表示',       type: 'cat', cat: 'stone'  },
     { id: 'Petals_of_Memory',   icon: 'ri-seedling-line', tip: '記憶の花弁の位置を表示', type: 'cat', cat: 'petals' },
-    { id: 'GfreRefresh',        icon: 'ri-restart-line',  tip: 'データを再取得',         type: 'refresh' }
+    { id: 'Data_Reacquisition',        icon: 'ri-restart-line',  tip: 'データを再取得',         type: 'refresh' }
   ];
 
   // フォント不達時の代替文字とフラグ
