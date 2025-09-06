@@ -242,7 +242,6 @@
     });
   }
 
-  // 既存ボタンへ一括フォールバック
   function applyFallbackToExistingButtons() {
     for (const spec of BUTTONS) {
       const el = document.getElementById(spec.id);
@@ -264,7 +263,7 @@
     div.setAttribute('style', CFG.buttonInlineStyle);
     div.setAttribute('data-gfre-tip', spec.tip);
     const i = document.createElement('i');
-    // フォント可用性に応じて切り替え
+
     if (cdnFailed) {
       const ch = FALLBACK_ICONS[spec.icon];
       if (ch) i.textContent = ch; else i.className = spec.icon;
@@ -273,7 +272,7 @@
     }
     div.appendChild(i);
     bindTooltip(div);
-    // イベントは定義から分岐
+
     if (spec.type === 'cat') {
       div.addEventListener('click', () => { activeCat = (activeCat === spec.cat) ? null : spec.cat; rafDraw(); });
     } else if (spec.type === 'refresh') {
@@ -282,7 +281,7 @@
         await fetchAll(true);
         for (const s of BUTTONS) {
           const b = document.getElementById(s.id);
-          if (b) b.setAttribute('data-gfre-tip', s.tip + (lastUpdatedAt ? '（最終更新 ' + formatDate(lastUpdatedAt) + '）' : ''));
+          if (b) b.setAttribute('data-gfre-tip', s.tip + (lastUpdatedAt ? '（データ取得 ' + formatDate(lastUpdatedAt) + '）' : ''));
         }
         toast(lastUpdatedAt ? ('更新: ' + formatDate(lastUpdatedAt)) : (prev ? '更新失敗' : '更新しました'));
         rafDraw();
@@ -306,7 +305,7 @@
 
   // 初期化
   async function init() {
-    // Remix Icon注入とフォント可用性チェック
+
     const remixiconUrl = 'https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css';
     if (!document.querySelector('link[rel="stylesheet"][href*="remixicon"]')) {
       const link = document.createElement('link');
@@ -338,15 +337,13 @@
     // まずデータを取得して準備完了を待つ
     await fetchAll();
 
-    // ここで初めてボタンを描画
     tryInsertUI();
     new MutationObserver(() => tryInsertUI())
       .observe(document.documentElement, { childList:true, subtree:true });
 
-    // ツールチップに鮮度を反映
     for (const s of BUTTONS) {
       const b = document.getElementById(s.id);
-      if (b) b.setAttribute('data-gfre-tip', s.tip + (lastUpdatedAt ? '（最終更新 ' + formatDate(lastUpdatedAt) + '）' : ''));
+      if (b) b.setAttribute('data-gfre-tip', s.tip + (lastUpdatedAt ? '（データ取得 ' + formatDate(lastUpdatedAt) + '）' : ''));
     }
 
     setupObservers();
