@@ -33,12 +33,11 @@
     minFont: 14,
     maxFont: 30,
     fontScale: 0.7,
+    toastColor: '#fff',
+    toastShadow: 'none',
     // ★の色を変えたい時に弄る
     markColor: '#fff',
     markShadow: `-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000`
-    
-    toastColor: '#fff',
-    toastShadow: 'none'
   };
 
   // ボタン定義
@@ -287,9 +286,9 @@
         await fetchAll(true);
         for (const s of BUTTONS) {
           const b = document.getElementById(s.id);
-          if (b) b.setAttribute('data-gfre-tip', s.tip + (lastUpdatedAt ? '（データ取得 ' + formatDate(lastUpdatedAt) + '）' : ''));
+          if (b) b.setAttribute('data-gfre-tip', s.tip + (lastUpdatedAt ? '（データ取得：' + formatDate(lastUpdatedAt) + '）' : ''));
         }
-        toast(lastUpdatedAt ? ('更新: ' + formatDate(lastUpdatedAt)) : (prev ? '更新失敗' : '更新しました'));
+        toast(lastUpdatedAt ? ('更新：' + formatDate(lastUpdatedAt)) : (prev ? '更新失敗' : '更新しました'));
         rafDraw();
       });
     }
@@ -349,7 +348,7 @@
 
     for (const s of BUTTONS) {
       const b = document.getElementById(s.id);
-      if (b) b.setAttribute('data-gfre-tip', s.tip + (lastUpdatedAt ? '（データ取得 ' + formatDate(lastUpdatedAt) + '）' : ''));
+      if (b) b.setAttribute('data-gfre-tip', s.tip + (lastUpdatedAt ? '（データ取得：' + formatDate(lastUpdatedAt) + '）' : ''));
     }
 
     setupObservers();
