@@ -32,7 +32,10 @@
     tipOffsetY: -45,
     minFont: 14,
     maxFont: 30,
-    fontScale: 0.7
+    fontScale: 0.7,
+    // ★の色を変えたい時に弄る
+    markColor: '#fff',
+    markShadow: `-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000`
   };
 
   // ボタン定義
@@ -100,7 +103,7 @@
     if (!t) {
       t = document.createElement('div');
       t.id = 'gfre-toast';
-      t.style.cssText = 'position:fixed;left:50%;bottom:64px;transform:translateX(-50%);background:#333;color:#fff;padding:8px 12px;border-radius:6px;z-index:2147483647;font-size:13px;opacity:0;transition:opacity .15s;';
+      t.style.cssText = 'position:fixed;left:50%;bottom:64px;transform:translateX(-50%);background:#333;color:${CFG.markColor};padding:8px 12px;border-radius:6px;z-index:2147483647;font-size:13px;opacity:0;transition:opacity .15s;';
       document.body.appendChild(t);
     }
     t.textContent = msg;
@@ -180,7 +183,7 @@
       const cy = Math.round((row + 0.5) * ch);
       const m = document.createElement('div');
       m.textContent = CFG.markChar;
-      m.style.cssText = `position:absolute;left:${cx}px;top:${cy}px;transform:translate(-50%,-50%);font-weight:800;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.7);opacity:${CFG.markOpacity};line-height:1;font-size:${Math.max(CFG.minFont, Math.min(CFG.maxFont, Math.round(ch * CFG.fontScale)))}px;`;
+      m.style.cssText = `position:absolute;left:${cx}px;top:${cy}px;transform:translate(-50%,-50%);font-weight:800;color:${CFG.markColor};text-shadow:${CFG.markShadow};opacity:${CFG.markOpacity};line-height:1;font-size:${Math.max(CFG.minFont, Math.min(CFG.maxFont, Math.round(ch * CFG.fontScale)))}px;`;
       layer.appendChild(m);
       marks++;
     }
