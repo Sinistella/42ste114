@@ -7,6 +7,9 @@
 // @run-at       document-end
 // @grant        none
 // @noframes
+// @updateURL    https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/bulkpurchase.user.js
+// @downloadURL  https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/bulkpurchase.user.js
+// @homepageURL  https://github.com/Sinistella/42ste114
 // ==/UserScript==
 (function(){
   'use strict';
