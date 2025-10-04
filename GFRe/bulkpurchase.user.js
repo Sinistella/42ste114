@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         GFre 連続購入
+// @name         GFre まとめ買い
 // @namespace    GFre.bulk.purchase
 // @version      1.1.3
-// @description  Shopでの連続購入を可能に
+// @description  Shopでのまとめ買い（直列購入）を可能に
 // @match        https://soraniwa.428.st/gf/?mode=shop
 // @run-at       document-end
 // @grant        none
