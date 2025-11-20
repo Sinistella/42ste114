@@ -4,8 +4,8 @@
 // @version      1.0.0
 // @description  人様の名前と画像にマスキング
 // @match        https://soraniwa.428.st/gf/result/*
-// @updateURL    https://dl.dropboxusercontent.com/scl/fi/3xmu6hsy62yti2m0dgcqr/GFreSkillSettingModifier_Lite.user.js?rlkey=q73pn42yz9bg7rbs5ciqyvgq8&st=cdbhlpoo
-// @downloadURL  https://dl.dropboxusercontent.com/scl/fi/3xmu6hsy62yti2m0dgcqr/GFreSkillSettingModifier_Lite.user.js?rlkey=q73pn42yz9bg7rbs5ciqyvgq8&st=cdbhlpoo
+// @updateURL    https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/masking.user.js
+// @downloadURL  https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/masking.user.js
 // @grant        none
 // ==/UserScript==
 (function () {
