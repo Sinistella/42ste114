@@ -5,6 +5,8 @@
 // @description  アイコン画像クリックで行動ログをポップアップ
 // @match        https://soraniwa.428.st/gf/result/*
 // @grant        none
+// @updateURL    https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/actionlog.user.js
+// @downloadURL  https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/actionlog.user.js
 // ==/UserScript==
 (function () {
   "use strict";
@@ -155,7 +157,7 @@
 
   // ========= ポップアップ描画 =========
   function showPopup(displayName, actorInfo) {
-    const overlayId = "soraniwa-action-popup-overlay";
+    const overlayId = "gfre-actionlog-overlay";
     let overlay = document.getElementById(overlayId);
     if (!overlay) {
       overlay = document.createElement("div");
@@ -221,7 +223,7 @@
     };
 
     const title = document.createElement("div");
-    title.textContent = (displayName || "不明なキャラ") + " の行動一覧";
+    title.textContent = (displayName || "？？？") + " の行動一覧";
     Object.assign(title.style, {
       fontWeight: "bold",
       textAlign: "center",
@@ -242,7 +244,7 @@
 
     if (!actorInfo || turns.length === 0) {
       const msg = document.createElement("div");
-      msg.textContent = "行動ログが見つかりません。";
+      msg.textContent = "行動ログが見つからない……多分即死。";
       Object.assign(msg.style, { textAlign: "center", marginTop: "10px" });
       content.appendChild(msg);
     } else {
@@ -256,11 +258,22 @@
         return len > m ? len : m;
       }, 0);
 
-      // ヘッダ
       const trHead = document.createElement("tr");
-      for (const t of turns) {
+
+      const th0 = document.createElement("th");
+      th0.textContent = "★";
+      Object.assign(th0.style, {
+        border: "1px solid #ccaa77",
+        padding: "3px 6px",
+        textAlign: "center",
+        background: "#f2e4c8",
+        whiteSpace: "nowrap"
+      });
+      trHead.appendChild(th0);
+
+      for (let act = 0; act < maxRows; act++) {
         const th = document.createElement("th");
-        th.textContent = t + "ターン目";
+        th.textContent = (act + 1) + "行動目";
         Object.assign(th.style, {
           border: "1px solid #ccaa77",
           padding: "3px 6px",
@@ -272,25 +285,39 @@
       }
       table.appendChild(trHead);
 
-      for (let row = 0; row < maxRows; row++) {
+      for (const t of turns) {
         const tr = document.createElement("tr");
-        for (const t of turns) {
+
+        const tdTurn = document.createElement("td");
+        tdTurn.textContent = t + "ターン目";
+        Object.assign(tdTurn.style, {
+          border: "1px solid #ddc090",
+          padding: "3px 6px",
+          textAlign: "center",
+          background: "#f2e4c8",
+          whiteSpace: "nowrap",
+          fontWeight: "bold"
+        });
+        tr.appendChild(tdTurn);
+
+        const arr = actorInfo.turns[t] || [];
+        for (let act = 0; act < maxRows; act++) {
           const td = document.createElement("td");
-          const arr = actorInfo.turns[t] || [];
-          td.textContent = arr[row] ?? "-";
+          td.textContent = arr[act] ?? "-";
           Object.assign(td.style, {
             border: "1px solid #ddc090",
             padding: "3px 6px",
-            background: row % 2 === 0 ? "#fffff0" : "#f7ffea",
+            background: act % 2 === 0 ? "#fffff0" : "#f7ffea",
             whiteSpace: "nowrap"
           });
           tr.appendChild(td);
         }
+
         table.appendChild(tr);
       }
 
       content.appendChild(table);
-      // 列幅を最も長いセルの幅に揃える
+
       requestAnimationFrame(() => {
         const rows = table.rows;
         if (!rows.length) return;
@@ -342,7 +369,7 @@
         wrapper.innerHTML =
           '<div class="talkarea" style="text-align:center;background-color: #ffffff33;">' +
           '<b style="color: #eebb99; font-size: 16pt;font-style: italic;">' +
-          '<span><small style="font-weight:thin; font-size: 50%;">▲前のターン</small></span>' +
+          '<span><small style="font-weight:thin; font-size: 50%;">《ここが最初のターンや》</small></span>' +
           "　　　-Turn 1-　　　" +
           '<span id="s_turn1"><a href="#s_turn2"><small style="font-weight:thin; font-size: 50%;">次のターン▼</small></a></span>' +
           "</b></div>";
@@ -398,7 +425,6 @@
       element.style.cursor = "pointer";
     });
 
-    // クリック委譲：アイコンだけを拾う
     document.addEventListener(
       "click",
       (ev) => {
