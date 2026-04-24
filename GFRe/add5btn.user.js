@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         GFRe add 5btn
+// @name         GFRe ボタン追加
 // @namespace    gfre.add5btn
 // @version      1.0.1
 // @description  呼出＆花壇ボタンを追加
