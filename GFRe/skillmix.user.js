@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         GFRe SkillMix
+// @name         GFRe スキル合成
 // @namespace    gfre.skillmix
 // @version      1.0.1
 // @description  スキルの合成結果をプレビュー
