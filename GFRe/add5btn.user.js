@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GFRe add 5btn
 // @namespace    gfre.add.5btn
-// @version      0.4.0
+// @version      0.9.1
 // @description  呼出＆花壇ボタンを追加
 // @match        https://soraniwa.428.st/gf/*
 // @run-at       document-idle
@@ -13,11 +13,11 @@
   if (window.__GFRE_ADD5_CFG__) return;
   window.__GFRE_ADD5_CFG__ = true;
 
+  // --- 定数・設定 ---
   const K_CALL1 = 'gfre:add5:call1';
   const K_CALL2 = 'gfre:add5:call2';
   const K_CALL3 = 'gfre:add5:call3';
   const K_KADAN = 'gfre:add5:kadan';
-
   const HIDE_ON = new Set(['btn2','btn4','btn6']);
 
   function onReady(fn){ if(document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
@@ -27,55 +27,101 @@
     if (!base) return;
 
     if (!document.getElementById('__gfre_add5_marker__')) {
-      ['設定','花壇','呼出3','呼出2','呼出1'].forEach(v => {
-        base.insertAdjacentHTML('afterend', ' <input type="submit" class="__gfre_btn" style="display:inline;" value="'+ v +'">');
+      // 1. 配置崩れの原因となる改行(BR)を削除
+      const next = base.nextSibling;
+      if (next && next.tagName === 'BR') next.remove();
+
+      // 2. ボタンの生成
+      ['設定','花壇','呼出３','呼出２','呼出１'].forEach(v => {
+        const btn = document.createElement('input');
+        btn.type = 'submit'; // 見た目を「行動する」と完全に一致させる
+        btn.className = '__gfre_btn';
+        btn.value = v;
+        btn.style.margin = '4px'; // main.cssの余白を明示
+
+        // ★重要：サイト側による value 書き換えを「拒否」する設定
+        Object.defineProperty(btn, 'value', {
+          value: v,
+          writable: false,     // 書き換え禁止
+          configurable: true
+        });
+
+        base.insertAdjacentElement('afterend', btn);
+
+        // イベント付与
+        btn.addEventListener('click', (e) => {
+          e.preventDefault(); // 送信を阻止
+          e.stopPropagation();
+          if (v === '呼出１') applyCall(loadArr(K_CALL1));
+          else if (v === '呼出２') applyCall(loadArr(K_CALL2));
+          else if (v === '呼出３') applyCall(loadArr(K_CALL3));
+          else if (v === '花壇') applyKadan(loadStr(K_KADAN));
+          else if (v === '設定') openConfig(); // ★修正箇所
+        }, true);
       });
+
       const m = document.createElement('span');
       m.id = '__gfre_add5_marker__';
       base.parentNode.insertBefore(m, base.nextSibling);
     }
 
-    const btnCall1 = findBtn('呼出1');
-    const btnCall2 = findBtn('呼出2');
-    const btnCall3 = findBtn('呼出3');
-    const btnKadan = findBtn('花壇');
-    const btnConfig = findBtn('設定');
-
-    btnCall1?.addEventListener('click', (e) => { e.preventDefault(); applyCall(loadArr(K_CALL1)); });
-    btnCall2?.addEventListener('click', (e) => { e.preventDefault(); applyCall(loadArr(K_CALL2)); });
-    btnCall3?.addEventListener('click', (e) => { e.preventDefault(); applyCall(loadArr(K_CALL3)); });
-    btnKadan?.addEventListener('click', (e) => { e.preventDefault(); applyKadan(loadStr(K_KADAN)); });
-    btnConfig?.addEventListener('click', (e) => { e.preventDefault(); openConfig(); });
-
-    buildModal();
+    buildModal(); // ★追加箇所
     injectHiddenClass();
-
-    document.addEventListener('pointerdown', (e) => {
-      const sb = e.target.closest?.('.switchbutton');
-      if (!sb || !sb.id) return;
-      toggleExtra(!HIDE_ON.has(sb.id)); 
-    }, true);
-
     const mo = new MutationObserver(() => syncByActiveTab());
     mo.observe(document.documentElement, { subtree:true, attributes:true, attributeFilter:['class'] });
-
     syncByActiveTab();
   });
 
+  // --- 反映・保存ロジック ---
   function applyCall(arr){
     const [v1,v2,v3] = norm3(arr).map(normalizeNum);
-    setValue('#d1', v1);
-    setValue('#d2', v2);
-    setValue('#d3', v3);
+    setValue('#d1', v1); setValue('#d2', v2); setValue('#d3', v3);
   }
   function applyKadan(v){
     const val = normalizeNum(v);
-    setValue('#d1', val);
-    setValue('#d2', '');
-    setValue('#d3', '');
+    setValue('#d1', val); setValue('#d2', ''); setValue('#d3', '');
+  }
+  function setValue(sel, v){ const el = document.querySelector(sel); if(el) el.value = v ?? ''; }
+  function loadArr(k){ try{ return JSON.parse(localStorage.getItem(k)||'[]'); }catch{return [];} }
+  function loadStr(k){ return localStorage.getItem(k)||''; }
+  function normalizeNum(v){ return String(v||'').replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[^0-9]/g,''); }
+  function norm3(a){ return [a[0]||'', a[1]||'', a[2]||'']; }
+
+  function injectHiddenClass(){
+    if (document.getElementById('__gfre_style_hidden__')) return;
+    const st = document.createElement('style');
+    st.id = '__gfre_style_hidden__';
+    st.textContent = '.gfre-hidden{display:none !important;}';
+    document.head.appendChild(st);
   }
 
-  function buildModal(){
+  function syncByActiveTab(){
+    const act = document.querySelector('.switchbutton.enablebtn');
+    const show = !HIDE_ON.has(act?.id || '');
+    document.querySelectorAll('.__gfre_btn').forEach(el => {
+      const val = el.getAttribute('value');
+      if (val !== '設定') el.classList.toggle('gfre-hidden', !show);
+    });
+  }
+
+  // --- ★以下追加分：設定画面ロジック ---
+  function openConfig() { const w = document.getElementById('__gfre_cfg_wrap__'); if (w) w.style.display = 'flex'; }
+  function closeConfig() { const w = document.getElementById('__gfre_cfg_wrap__'); if (w) w.style.display = 'none'; }
+  function getVal(sel) { const el = document.querySelector(sel); return el ? String(el.value || '') : ''; }
+  function saveArr(k, a) { try { localStorage.setItem(k, JSON.stringify(Array.isArray(a) ? a : [])); } catch {} }
+  function saveStr(k, s) { localStorage.setItem(k, String(s || '')); }
+
+  function enforceHalfWidthNumeric(input) {
+    const fix = () => {
+      const v = normalizeNum(input.value);
+      if (input.value !== v) input.value = v;
+    };
+    input.addEventListener('input', fix);
+    input.addEventListener('blur', fix);
+    input.addEventListener('paste', () => setTimeout(fix, 0));
+  }
+
+  function buildModal() {
     if (document.getElementById('__gfre_cfg_wrap__')) return;
 
     const wrap = document.createElement('div');
@@ -88,9 +134,9 @@
 
     pane.innerHTML = [
       '<div style="font-weight:700;margin-bottom:6px;">Eno登録</div>',
-      row('呼出1', ['__in_c11','__in_c12','__in_c13']),
-      row('呼出2', ['__in_c21','__in_c22','__in_c23']),
-      row('呼出3', ['__in_c31','__in_c32','__in_c33']),
+      row('呼出１', ['__in_c11', '__in_c12', '__in_c13']),
+      row('呼出２', ['__in_c21', '__in_c22', '__in_c23']),
+      row('呼出３', ['__in_c31', '__in_c32', '__in_c33']),
       row('花壇', ['__in_k1']),
       '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">',
       '<button type="button" id="__cfg_cancel" style="height:32px;padding:0 12px;border:1px solid #d0d0d0;border-radius:8px;background:#fff;cursor:pointer;">キャンセル</button>',
@@ -102,117 +148,42 @@
     document.body.appendChild(wrap);
 
     fillInputs();
-    attachNumericFilters();
 
-    wrap.addEventListener('click', (e)=>{ if(e.target===wrap) closeConfig(); });
+    ['__in_c11', '__in_c12', '__in_c13', '__in_c21', '__in_c22', '__in_c23', '__in_c31', '__in_c32', '__in_c33', '__in_k1'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) enforceHalfWidthNumeric(el);
+    });
+
+    wrap.addEventListener('click', (e) => { if (e.target === wrap) closeConfig(); });
     pane.querySelector('#__cfg_cancel').addEventListener('click', closeConfig);
     pane.querySelector('#__cfg_save').addEventListener('click', saveConfig);
-    window.__GFRE_OPEN_CFG__ = openConfig;
 
-    function row(label, ids){
-      const inputs = ids.map(id => '<input id="'+id+'" type="text" inputmode="numeric" pattern="\\d*" style="flex:1 1 0;border:1px solid #ccc;border-radius:6px;height:30px;padding:0 8px;">').join('<span style="width:6px;"></span>');
-      return '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;"><label style="min-width:54px;">'+label+'</label><div style="display:flex;flex:1 1 auto;">'+inputs+'</div></div>';
+    function row(label, ids) {
+      const inputs = ids.map(id => '<input id="' + id + '" type="text" inputmode="numeric" pattern="\\d*" style="flex:1 1 0;border:1px solid #ccc;border-radius:6px;height:30px;padding:0 8px;">').join('<span style="width:6px;"></span>');
+      return '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;"><label style="min-width:54px;">' + label + '</label><div style="display:flex;flex:1 1 auto;">' + inputs + '</div></div>';
     }
 
-    function fillInputs(){
+    function fillInputs() {
       const c1 = loadArr(K_CALL1);
       const c2 = loadArr(K_CALL2);
       const c3 = loadArr(K_CALL3);
       const kd = loadStr(K_KADAN);
-      set('#__in_c11', c1[0]||''); set('#__in_c12', c1[1]||''); set('#__in_c13', c1[2]||'');
-      set('#__in_c21', c2[0]||''); set('#__in_c22', c2[1]||''); set('#__in_c23', c2[2]||'');
-      set('#__in_c31', c3[0]||''); set('#__in_c32', c3[1]||''); set('#__in_c33', c3[2]||'');
-      set('#__in_k1', kd||'');
+      setValue('#__in_c11', c1[0]); setValue('#__in_c12', c1[1]); setValue('#__in_c13', c1[2]);
+      setValue('#__in_c21', c2[0]); setValue('#__in_c22', c2[1]); setValue('#__in_c23', c2[2]);
+      setValue('#__in_c31', c3[0]); setValue('#__in_c32', c3[1]); setValue('#__in_c33', c3[2]);
+      setValue('#__in_k1', kd);
     }
 
-    function attachNumericFilters(){
-      const ids = ['__in_c11','__in_c12','__in_c13','__in_c21','__in_c22','__in_c23','__in_c31','__in_c32','__in_c33','__in_k1'];
-      ids.forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        enforceHalfWidthNumeric(el);
-      });
-    }
-
-    function saveConfig(){
-      const c1 = [val('#__in_c11'), val('#__in_c12'), val('#__in_c13')].map(normalizeNum).filter(x=>x!=='');
-      const c2 = [val('#__in_c21'), val('#__in_c22'), val('#__in_c23')].map(normalizeNum).filter(x=>x!=='');
-      const c3 = [val('#__in_c31'), val('#__in_c32'), val('#__in_c33')].map(normalizeNum).filter(x=>x!=='');
-      const kd = normalizeNum(val('#__in_k1'));
+    function saveConfig() {
+      const c1 = [getVal('#__in_c11'), getVal('#__in_c12'), getVal('#__in_c13')].map(normalizeNum).filter(x => x !== '');
+      const c2 = [getVal('#__in_c21'), getVal('#__in_c22'), getVal('#__in_c23')].map(normalizeNum).filter(x => x !== '');
+      const c3 = [getVal('#__in_c31'), getVal('#__in_c32'), getVal('#__in_c33')].map(normalizeNum).filter(x => x !== '');
+      const kd = normalizeNum(getVal('#__in_k1'));
       saveArr(K_CALL1, c1);
       saveArr(K_CALL2, c2);
       saveArr(K_CALL3, c3);
       saveStr(K_KADAN, kd);
       closeConfig();
     }
-  }
-
-  function injectHiddenClass(){
-    if (document.getElementById('__gfre_style_hidden__')) return;
-    const st = document.createElement('style');
-    st.id = '__gfre_style_hidden__';
-    st.textContent = '.gfre-hidden{display:none !important;}';
-    document.head.appendChild(st);
-  }
-  function extraButtons(){
-    return document.querySelectorAll('.__gfre_btn');
-  }
-  function toggleExtra(show){
-    extraButtons().forEach(el => el.classList.toggle('gfre-hidden', !show));
-  }
-  function activeTabId(){
-    const act = document.querySelector('.switchbutton.enablebtn');
-    return act?.id || '';
-  }
-  function syncByActiveTab(){
-    const id = activeTabId();
-    toggleExtra(!HIDE_ON.has(id));
-  }
-
-  function openConfig(){ const w = document.getElementById('__gfre_cfg_wrap__'); if(w) w.style.display='flex'; }
-  function closeConfig(){ const w = document.getElementById('__gfre_cfg_wrap__'); if(w) w.style.display='none'; }
-
-  function findBtn(label){ return Array.from(document.querySelectorAll('input[type="submit"]')).find(b => b.value === label); }
-  function setValue(sel, v){ const el = document.querySelector(sel); if(el!=null) el.value = v ?? ''; }
-  function set(sel, v){ const el = document.querySelector(sel); if(el!=null) el.value = v ?? ''; }
-  function val(sel){ const el = document.querySelector(sel); return el ? String(el.value||'') : ''; }
-  function norm3(a){ const x = Array.isArray(a)?a:[]; return [x[0]||'',x[1]||'',x[2]||'']; }
-  function loadArr(k){ try{ const v = JSON.parse(localStorage.getItem(k)||'[]'); return Array.isArray(v)?v:[]; }catch{return [];} }
-  function saveArr(k,a){ try{ localStorage.setItem(k, JSON.stringify(Array.isArray(a)?a:[])); }catch{} }
-  function loadStr(k){ try{ return localStorage.getItem(k)||''; }catch{return '';} }
-  function saveStr(k,s){ try{ localStorage.setItem(k, String(s||'')); }catch{} }
-
-  // 入力制御 全角→半角、半角数字のみ、1〜9999へ制限
-  function enforceHalfWidthNumeric(input){
-    const fix = () => {
-      let v = input.value;
-      v = v.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-      v = v.replace(/[^0-9]/g, '');
-      if (v.length > 4) v = v.slice(0, 4);
-      if (v !== '') {
-        let n = parseInt(v, 10);
-        if (!Number.isFinite(n)) n = 0;
-        if (n < 1) n = 1;
-        if (n > 9999) n = 9999;
-        v = String(n);
-      }
-      if (input.value !== v) input.value = v;
-    };
-    input.addEventListener('input', fix);
-    input.addEventListener('blur', fix);
-    input.addEventListener('paste', () => { setTimeout(fix, 0); });
-  }
-
-  // 任意値→Eno正規形。空は空のまま返す。
-  function normalizeNum(v){
-    let s = typeof v === 'string' ? v : '';
-    s = s.replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
-    s = s.replace(/[^0-9]/g, '');
-    if (s === '') return '';
-    let n = parseInt(s, 10);
-    if (!Number.isFinite(n)) return '';
-    if (n < 1) n = 1;
-    if (n > 9999) n = 9999;
-    return String(n);
   }
 })();
