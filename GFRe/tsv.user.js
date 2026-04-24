@@ -1,12 +1,14 @@
 // ==UserScript==
 // @name         GFre ステータス合計値
 // @namespace    GFre.tsv
-// @version      1.1.0
+// @version      1.0.1
 // @description  キャラリスト閲覧時にステータス合計値を表示しTsv列で並べ替え
 // @match        https://soraniwa.428.st/gf/?mode=list*
 // @run-at       document-end
 // @grant        none
 // @noframes
+// @updateURL    https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/tsv.user.js
+// @downloadURL  https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/tsv.user.js
 // ==/UserScript==
 
 (function () {
