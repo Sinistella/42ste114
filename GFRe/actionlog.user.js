@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GFRe 行動ログ
 // @namespace    gfre.actionlog
-// @version      1.0.0
+// @version      1.0.1
 // @description  アイコン画像クリックで行動ログをポップアップ
 // @match        https://soraniwa.428.st/gf/result/*
 // @grant        none
