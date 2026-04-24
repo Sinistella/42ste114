@@ -6,6 +6,8 @@
 // @match        https://soraniwa.428.st/gf/*
 // @run-at       document-idle
 // @grant        none
+// @updateURL    https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/add5btn.user.js
+// @downloadURL  https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/add5btn.user.js
 // ==/UserScript==
 
 (function () {
