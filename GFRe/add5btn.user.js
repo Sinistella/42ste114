@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GFRe add 5btn
 // @namespace    gfre.add.5btn
-// @version      0.9.1
+// @version      1.0.1
 // @description  呼出＆花壇ボタンを追加
 // @match        https://soraniwa.428.st/gf/*
 // @run-at       document-idle
