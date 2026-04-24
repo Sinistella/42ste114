@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GFRe kadan picker
 // @namespace    gfre.kadanpicker
-// @version      0.9.6
+// @version      1.0.1
 // @description  プルダウン→花図鑑ポップアップに
 // @match        https://soraniwa.428.st/gf/*
 // @run-at       document-end
