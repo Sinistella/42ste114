@@ -6,8 +6,8 @@
 // @match        https://soraniwa.428.st/gf/*
 // @run-at       document-start
 // @grant        none
-// @updateURL    https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/clientkiller.js
-// @downloadURL  https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/clientkiller.js
+// @updateURL    https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/clientkiller.user.js
+// @downloadURL  https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/clientkiller.user.js
 // ==/UserScript==
 
 (function () {
