@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         GFRe kadan picker
+// @name         GFRe プルダウンto花図鑑
 // @namespace    gfre.kadanpicker
 // @version      1.0.1
 // @description  プルダウン→花図鑑ポップアップに
