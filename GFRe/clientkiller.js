@@ -2,7 +2,7 @@
 // @name         GFRe 完全通信クライアント化v2
 // @namespace    gfre.clientkiller
 // @version      2.0.1
-// @description  探索も戦闘もPOSTだけ送信し、画面遷移を完全排除。
+// @description  探索も戦闘もPOSTだけ送信し、画面遷移を完全排除
 // @match        https://soraniwa.428.st/gf/*
 // @run-at       document-start
 // @grant        none
