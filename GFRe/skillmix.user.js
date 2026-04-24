@@ -1,11 +1,13 @@
 // ==UserScript==
 // @name         GFRe SkillMix
 // @namespace    gfre.skillmix
-// @version      0.8.2
+// @version      1.0.1
 // @description  スキルの合成結果をプレビュー
 // @match        https://soraniwa.428.st/gf/*
 // @run-at       document-idle
 // @grant        none
+// @updateURL    https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/skillmix.user.js
+// @downloadURL  https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/skillmix.user.js
 // ==/UserScript==
 (function () {
   'use strict';
