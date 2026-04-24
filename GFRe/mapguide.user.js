@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         GFRe Map Guide
+// @name         GFRe マップガイド
 // @namespace    gfre.mapguide
 // @version      1.0.1
 // @description  マップの座標を表示し、対象セルを赤枠で強調。
