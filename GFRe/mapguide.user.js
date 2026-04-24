@@ -1,9 +1,11 @@
 // ==UserScript==
 // @name         GFRe Map Guide
-// @namespace    https://github.com/Sinistella/42ste114
-// @version      0.2.0
-// @description  マップの座標を表示し、対象セルを赤枠で強調
+// @namespace    gfre.map.guide
+// @version      1.0.1
+// @description  マップの座標を表示し、対象セルを赤枠で強調。
 // @match        https://soraniwa.428.st/gf/*
+// @updateURL    https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/mapguide.user.js
+// @downloadURL  https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/mapguide.user.js
 // ==/UserScript==
 
 (function () {
