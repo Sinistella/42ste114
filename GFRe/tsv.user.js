@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         GFre ステータス合計値
+// @name         GFRe ステータス合計値
 // @namespace    GFre.tsv
 // @version      1.0.1
 // @description  キャラリスト閲覧時にステータス合計値を表示しTsv列で並べ替え
