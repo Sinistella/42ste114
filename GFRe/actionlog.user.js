@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GFRe 行動ログ
 // @namespace    gfre.actionlog
-// @version      1.0.6
+// @version      1.1.0
 // @description  アイコン画像クリックで行動ログをポップアップ
 // @match        https://soraniwa.428.st/gf/result/*
 // @grant        none
@@ -535,6 +535,45 @@
     }
   }
 
+  function setupActionBackLinks(battlemain) {
+    if (!battlemain) return;
+
+    battlemain.querySelectorAll("span.markerA a[id][href^='#s_'], span.markerB a[id][href^='#s_']").forEach((a) => {
+      if (!(a.textContent || "").includes("の行動！")) return;
+
+      const id = a.getAttribute("id") || "";
+      const m = id.match(/^s_(.+)_(\d+)$/);
+      if (!m) return;
+
+      const actorId = m[1];
+      const actionIndex = parseInt(m[2], 10);
+      if (!Number.isFinite(actionIndex) || actionIndex <= 0) return;
+
+      const prevId = "s_" + actorId + "_" + (actionIndex - 1);
+      if (!document.getElementById(prevId)) return;
+
+      const marker = a.parentElement;
+      if (!marker) return;
+
+      const exists = Array.from(marker.querySelectorAll("a.gfre-actionlog-backlink")).some((link) => {
+        return link.dataset.prevFor === id;
+      });
+      if (exists) return;
+
+      const back = document.createElement("a");
+      back.href = "#" + prevId;
+      back.textContent = "▲戻る";
+      back.className = "gfre-actionlog-backlink";
+      back.dataset.prevFor = id;
+
+      const space = document.createTextNode(" ");
+      const parent = a.parentNode;
+      if (!parent) return;
+      parent.insertBefore(space, a.nextSibling);
+      parent.insertBefore(back, space.nextSibling);
+    });
+  }
+
   function setupIconBindings(actions, battlemain) {
     if (!battlemain) return;
 
@@ -649,6 +688,8 @@
     const actions = parseAllActions();
 
     setupNameJumpAndTurnHeader(battlemain);
+
+    setupActionBackLinks(battlemain);
 
     setupIconBindings(actions, battlemain);
   }
