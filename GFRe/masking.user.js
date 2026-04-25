@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GFRe マスキング
 // @namespace    gfre.masking
-// @version      1.6.0
+// @version      1.7.0
 // @description  人様の名前と画像にマスキング
 // @match        https://soraniwa.428.st/gf/result/*
 // @updateURL    https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/masking.user.js
@@ -72,20 +72,26 @@
   function collectTargets() {
     const names = [];
     const actorIndexes = new Set();
+    const otherActorIndexes = new Set();
     const imageKeySet = new Set();
+    const otherImageKeySet = new Set();
 
-    const items = document.querySelectorAll(
-      `${CFG.selectorScrollData} i[${CFG.teamAttr}="${CFG.teamValue}"][${CFG.nameAttr}]`
-    );
+    const items = document.querySelectorAll(`${CFG.selectorScrollData} i[${CFG.nameAttr}]`);
 
     for (const item of items) {
-      const name = item.getAttribute(CFG.nameAttr);
-      if (name) names.push(name);
-
+      const isTargetTeam = item.getAttribute(CFG.teamAttr) === CFG.teamValue;
       const idx = item.getAttribute(CFG.indexAttr);
-      if (idx) actorIndexes.add(idx);
+      const icon = item.getAttribute("data-icon");
 
-      addImageKeys(imageKeySet, item.getAttribute("data-icon"));
+      if (isTargetTeam) {
+        const name = item.getAttribute(CFG.nameAttr);
+        if (name) names.push(name);
+        if (idx) actorIndexes.add(idx);
+        addImageKeys(imageKeySet, icon);
+      } else {
+        if (idx) otherActorIndexes.add(idx);
+        addImageKeys(otherImageKeySet, icon);
+      }
     }
 
     // 表示済みのステータス欄に data-soraniwa-actor="idx:N" がある場合、
@@ -93,15 +99,19 @@
     for (const img of document.querySelectorAll(`img[${CFG.actorAttr}]`)) {
       const actor = img.getAttribute(CFG.actorAttr) || "";
       const m = actor.match(/^idx:(\d+)$/);
-      if (m && actorIndexes.has(m[1])) {
-        addImageKeys(imageKeySet, img.currentSrc || img.src || img.getAttribute("src"));
-      }
+      if (!m) continue;
+
+      const src = img.currentSrc || img.src || img.getAttribute("src");
+      if (actorIndexes.has(m[1])) addImageKeys(imageKeySet, src);
+      else if (otherActorIndexes.has(m[1])) addImageKeys(otherImageKeySet, src);
     }
 
     return {
       names: Array.from(new Set(names)),
       actorIndexes,
-      imageKeySet
+      otherActorIndexes,
+      imageKeySet,
+      otherImageKeySet
     };
   }
 
@@ -142,35 +152,47 @@
     return hit;
   }
 
-  function shouldMaskImage(img, targets) {
+  function imageKeyHit(src, keySet) {
+    for (const key of imageKeys(src)) {
+      if (keySet.has(key)) return true;
+    }
+    return false;
+  }
+
+  function shouldMaskImage(img, targets, allowExternalFallback = false) {
     if (!img || img.closest(`.${CFG.imgMaskClass}`)) return false;
 
     const actor = img.getAttribute(CFG.actorAttr) || "";
     const m = actor.match(/^idx:(\d+)$/);
-    if (m && targets.actorIndexes.has(m[1])) return true;
-
-    const src = img.currentSrc || img.src || img.getAttribute("src") || "";
-    for (const key of imageKeys(src)) {
-      if (targets.imageKeySet.has(key)) return true;
+    if (m) {
+      if (targets.actorIndexes.has(m[1])) return true;
+      if (targets.otherActorIndexes.has(m[1])) return false;
     }
 
-    // 旧版互換: 公式NPC・公式素材以外の画像は、プレイヤー画像として扱う。
-    // 上の actor/image 判定で拾えない外部アイコン対策。
-    return Boolean(src && !isOfficialImage(src));
+    const src = img.currentSrc || img.src || img.getAttribute("src") || "";
+    const targetHit = imageKeyHit(src, targets.imageKeySet);
+    const otherHit = imageKeyHit(src, targets.otherImageKeySet);
+
+    if (targetHit && !otherHit) return true;
+    if (otherHit) return false;
+
+    // 旧版互換は「対象名を含む小さな処理単位」に限定する。
+    // 無条件に外部画像をマスクすると、外部URLを使う敵アイコンまで巻き込むため。
+    return Boolean(allowExternalFallback && src && !isOfficialImage(src));
   }
 
   function rootHasTarget(root, re, targets) {
     if (!root) return false;
 
     if (root.matches && root.matches("img[src]")) {
-      return shouldMaskImage(root, targets);
+      return shouldMaskImage(root, targets, false);
     }
 
     if (hasTargetName(re, root.textContent || "")) return true;
 
     const imgs = root.querySelectorAll ? root.querySelectorAll("img[src]") : [];
     for (const img of imgs) {
-      if (shouldMaskImage(img, targets)) return true;
+      if (shouldMaskImage(img, targets, false)) return true;
     }
 
     return false;
@@ -212,7 +234,7 @@
     }
   }
 
-  function applyImageMasks(root, targets) {
+  function applyImageMasks(root, targets, allowExternalFallback = false) {
     if (!root) return;
 
     const imgs = root.matches && root.matches("img[src]")
@@ -220,7 +242,7 @@
       : Array.from(root.querySelectorAll ? root.querySelectorAll("img[src]") : []);
 
     for (const img of imgs) {
-      if (!shouldMaskImage(img, targets)) continue;
+      if (!shouldMaskImage(img, targets, allowExternalFallback)) continue;
 
       const wrap = document.createElement("span");
       wrap.className = CFG.imgMaskClass;
@@ -462,8 +484,9 @@ body.${CFG.offClass} .${CFG.imgMaskClass}{ cursor:inherit; }
 
     function processRoot(root) {
       if (!root || root.getAttribute(CFG.processedAttr) === "1") return;
+      const allowExternalFallback = hasTargetName(nameRe, root.textContent || "");
       applyTextMasks(nameRe, root);
-      applyImageMasks(root, targets);
+      applyImageMasks(root, targets, allowExternalFallback);
       root.setAttribute(CFG.processedAttr, "1");
     }
 
