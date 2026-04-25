@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GFRe マスキング
 // @namespace    gfre.masking
-// @version      1.7.0
+// @version      2.0.0
 // @description  人様の名前と画像にマスキング
 // @match        https://soraniwa.428.st/gf/result/*
 // @updateURL    https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/masking.user.js
@@ -15,8 +15,7 @@
     selectorScrollData: "span.scrolldata",
     teamAttr: "data-team",
     nameAttr: "data-cname",
-    indexAttr: "data-index",
-    actorAttr: "data-soraniwa-actor",
+    iconAttr: "data-icon",
     teamValue: "0",
     textMaskClass: "gfre-mask-text",
     imgMaskClass: "gfre-mask-img",
@@ -27,10 +26,12 @@
     toggleId: "gfre-mask-toggle",
     fixedEm: 5, // 全角5文字相当
     viewportMargin: 240,
-    officialImgPrefixes: [
-      "https://soraniwa.428.st/gf/img/",
-      "https://st.x0.to/img/"
-    ]
+    // 公式画像はドメインだけで判定する。
+    // この2ドメイン以外の画像は、味方/敵/文脈を問わずマスキングする。
+    officialImgHosts: new Set([
+      "soraniwa.428.st",
+      "st.x0.to"
+    ])
   };
 
   const EXCLUDED_TEXT_TAGS = new Set([
@@ -40,78 +41,34 @@
   const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const byLongest = (a, b) => b.length - a.length;
 
-  function imageKeys(src) {
-    if (!src) return [];
-    try {
-      const u = new URL(src, location.href);
-      const file = decodeURIComponent(u.pathname.split("/").pop() || "");
-      return [u.href, u.pathname, file].filter(Boolean);
-    } catch (_) {
-      const file = String(src).split(/[/?#]/).filter(Boolean).pop() || "";
-      return [String(src), file].filter(Boolean);
-    }
-  }
-
-  function addImageKeys(set, src) {
-    for (const key of imageKeys(src)) set.add(key);
-  }
-
   function isOfficialImage(src) {
     if (!src) return false;
-
-    let href;
     try {
-      href = new URL(src, location.href).href;
+      const u = new URL(src, location.href);
+      return CFG.officialImgHosts.has(u.hostname);
     } catch (_) {
-      href = String(src);
+      return false;
     }
-
-    return CFG.officialImgPrefixes.some(prefix => href.startsWith(prefix));
   }
 
   function collectTargets() {
     const names = [];
-    const actorIndexes = new Set();
-    const otherActorIndexes = new Set();
-    const imageKeySet = new Set();
-    const otherImageKeySet = new Set();
-
     const items = document.querySelectorAll(`${CFG.selectorScrollData} i[${CFG.nameAttr}]`);
 
     for (const item of items) {
-      const isTargetTeam = item.getAttribute(CFG.teamAttr) === CFG.teamValue;
-      const idx = item.getAttribute(CFG.indexAttr);
-      const icon = item.getAttribute("data-icon");
+      const name = item.getAttribute(CFG.nameAttr);
+      if (!name) continue;
 
-      if (isTargetTeam) {
-        const name = item.getAttribute(CFG.nameAttr);
-        if (name) names.push(name);
-        if (idx) actorIndexes.add(idx);
-        addImageKeys(imageKeySet, icon);
-      } else {
-        if (idx) otherActorIndexes.add(idx);
-        addImageKeys(otherImageKeySet, icon);
-      }
-    }
+      const isOwnSide = item.getAttribute(CFG.teamAttr) === CFG.teamValue;
+      const icon = item.getAttribute(CFG.iconAttr) || "";
+      const hasNonOfficialIcon = !!icon && !isOfficialImage(icon);
 
-    // 表示済みのステータス欄に data-soraniwa-actor="idx:N" がある場合、
-    // そこから実際にページ内で使われている画像パスも拾う。ローカル保存HTMLでも効く。
-    for (const img of document.querySelectorAll(`img[${CFG.actorAttr}]`)) {
-      const actor = img.getAttribute(CFG.actorAttr) || "";
-      const m = actor.match(/^idx:(\d+)$/);
-      if (!m) continue;
-
-      const src = img.currentSrc || img.src || img.getAttribute("src");
-      if (actorIndexes.has(m[1])) addImageKeys(imageKeySet, src);
-      else if (otherActorIndexes.has(m[1])) addImageKeys(otherImageKeySet, src);
+      // 旧仕様の「team=0」は維持しつつ、敵側に出るプレイヤー/外部画像キャラも拾う。
+      if (isOwnSide || hasNonOfficialIcon) names.push(name);
     }
 
     return {
-      names: Array.from(new Set(names)),
-      actorIndexes,
-      otherActorIndexes,
-      imageKeySet,
-      otherImageKeySet
+      names: Array.from(new Set(names))
     };
   }
 
@@ -141,6 +98,7 @@
   }
 
   function buildNameRegex(names) {
+    if (!names.length) return null;
     return new RegExp(`(${[...names].sort(byLongest).map(esc).join("|")})`, "g");
   }
 
@@ -152,47 +110,27 @@
     return hit;
   }
 
-  function imageKeyHit(src, keySet) {
-    for (const key of imageKeys(src)) {
-      if (keySet.has(key)) return true;
-    }
-    return false;
-  }
-
-  function shouldMaskImage(img, targets, allowExternalFallback = false) {
+  function shouldMaskImage(img) {
     if (!img || img.closest(`.${CFG.imgMaskClass}`)) return false;
 
-    const actor = img.getAttribute(CFG.actorAttr) || "";
-    const m = actor.match(/^idx:(\d+)$/);
-    if (m) {
-      if (targets.actorIndexes.has(m[1])) return true;
-      if (targets.otherActorIndexes.has(m[1])) return false;
-    }
-
     const src = img.currentSrc || img.src || img.getAttribute("src") || "";
-    const targetHit = imageKeyHit(src, targets.imageKeySet);
-    const otherHit = imageKeyHit(src, targets.otherImageKeySet);
+    if (!src) return false;
 
-    if (targetHit && !otherHit) return true;
-    if (otherHit) return false;
-
-    // 旧版互換は「対象名を含む小さな処理単位」に限定する。
-    // 無条件に外部画像をマスクすると、外部URLを使う敵アイコンまで巻き込むため。
-    return Boolean(allowExternalFallback && src && !isOfficialImage(src));
+    return !isOfficialImage(src);
   }
 
-  function rootHasTarget(root, re, targets) {
+  function rootHasTarget(root, re) {
     if (!root) return false;
 
     if (root.matches && root.matches("img[src]")) {
-      return shouldMaskImage(root, targets, false);
+      return shouldMaskImage(root);
     }
 
     if (hasTargetName(re, root.textContent || "")) return true;
 
     const imgs = root.querySelectorAll ? root.querySelectorAll("img[src]") : [];
     for (const img of imgs) {
-      if (shouldMaskImage(img, targets, false)) return true;
+      if (shouldMaskImage(img)) return true;
     }
 
     return false;
@@ -234,7 +172,7 @@
     }
   }
 
-  function applyImageMasks(root, targets, allowExternalFallback = false) {
+  function applyImageMasks(root) {
     if (!root) return;
 
     const imgs = root.matches && root.matches("img[src]")
@@ -242,7 +180,7 @@
       : Array.from(root.querySelectorAll ? root.querySelectorAll("img[src]") : []);
 
     for (const img of imgs) {
-      if (!shouldMaskImage(img, targets, allowExternalFallback)) continue;
+      if (!shouldMaskImage(img)) continue;
 
       const wrap = document.createElement("span");
       wrap.className = CFG.imgMaskClass;
@@ -252,6 +190,8 @@
   }
 
   function wrapDirectBattleTextChunks(re) {
+    if (!re) return [];
+
     const main = document.querySelector(".battlemain");
     if (!main) return [];
 
@@ -289,7 +229,7 @@
     });
   }
 
-  function collectMaskRoots(re, targets) {
+  function collectMaskRoots(re) {
     const roots = [
       ...wrapDirectBattleTextChunks(re),
       ...document.querySelectorAll([
@@ -300,13 +240,14 @@
         ".battlemain .frameareab table td > div",
         ".battlemain img[src]",
         ".framearea > p > span",
-        ".stats .framearea"
+        ".stats .framearea",
+        ".stats img[src]"
       ].join(","))
     ];
 
     const filtered = uniqueElements(roots).filter(el => {
       if (el.closest(CFG.selectorScrollData)) return false;
-      return rootHasTarget(el, re, targets);
+      return rootHasTarget(el, re);
     });
 
     return pruneNestedRoots(filtered);
@@ -474,61 +415,74 @@ body.${CFG.offClass} .${CFG.imgMaskClass}{ cursor:inherit; }
   }
 
   function main() {
-    const targets = collectTargets();
-    if (!targets.names.length) return;
-
-    const nameRe = buildNameRegex(targets.names);
-    const roots = collectMaskRoots(nameRe, targets);
-
     addStylesAndHandlers();
+
+    let initialized = false;
+    let nameRe = null;
+    let roots = [];
+    let observer = null;
+    let throttled = null;
+    let isEnabled = null;
 
     function processRoot(root) {
       if (!root || root.getAttribute(CFG.processedAttr) === "1") return;
-      const allowExternalFallback = hasTargetName(nameRe, root.textContent || "");
+
       applyTextMasks(nameRe, root);
-      applyImageMasks(root, targets, allowExternalFallback);
+      applyImageMasks(root);
       root.setAttribute(CFG.processedAttr, "1");
     }
 
     function processVisibleRoots() {
+      if (!initialized) initMasking();
       for (const root of roots) {
         if (isInViewport(root)) processRoot(root);
       }
     }
 
-    const isEnabled = addToggleButton(processVisibleRoots);
+    function initMasking() {
+      if (initialized) return;
+      initialized = true;
 
-    if ("IntersectionObserver" in window) {
-      const observer = new IntersectionObserver(entries => {
-        if (!isEnabled()) return;
+      const targets = collectTargets();
+      nameRe = buildNameRegex(targets.names);
+      roots = collectMaskRoots(nameRe);
 
-        for (const entry of entries) {
-          if (entry.isIntersecting) processRoot(entry.target);
-        }
-      }, {
-        root: null,
-        rootMargin: `${CFG.viewportMargin}px 0px`,
-        threshold: 0
-      });
+      if (!roots.length) return;
 
-      for (const root of roots) observer.observe(root);
-    } else {
-      const throttled = (() => {
-        let timer = 0;
-        return () => {
-          if (timer) return;
-          timer = window.setTimeout(() => {
-            timer = 0;
-            if (isEnabled()) processVisibleRoots();
-          }, 150);
-        };
-      })();
+      if ("IntersectionObserver" in window) {
+        observer = new IntersectionObserver(entries => {
+          if (!isEnabled || !isEnabled()) return;
 
-      window.addEventListener("scroll", throttled, { passive: true });
-      window.addEventListener("resize", throttled, { passive: true });
+          for (const entry of entries) {
+            if (entry.isIntersecting) processRoot(entry.target);
+          }
+        }, {
+          root: null,
+          rootMargin: `${CFG.viewportMargin}px 0px`,
+          threshold: 0
+        });
+
+        for (const root of roots) observer.observe(root);
+      } else {
+        throttled = (() => {
+          let timer = 0;
+          return () => {
+            if (timer) return;
+            timer = window.setTimeout(() => {
+              timer = 0;
+              if (isEnabled && isEnabled()) processVisibleRoots();
+            }, 150);
+          };
+        })();
+
+        window.addEventListener("scroll", throttled, { passive: true });
+        window.addEventListener("resize", throttled, { passive: true });
+      }
     }
 
-    if (isEnabled()) processVisibleRoots();
+    // 初期OFF時は、対象収集・ルート収集・IntersectionObserver登録すら行わない。
+    // ONにした瞬間だけ初期化する。
+    isEnabled = addToggleButton(processVisibleRoots);
   }
 
   if (document.readyState === "loading") {
