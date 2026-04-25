@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GFRe マスキング
 // @namespace    gfre.masking
-// @version      1.5.0
+// @version      1.6.0
 // @description  人様の名前と画像にマスキング
 // @match        https://soraniwa.428.st/gf/result/*
 // @updateURL    https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/masking.user.js
@@ -25,10 +25,12 @@
     chunkClass: "gfre-mask-chunk",
     processedAttr: "data-gfre-mask-processed",
     toggleId: "gfre-mask-toggle",
-    storageKey: "gfre.masking.enabled.v4",
     fixedEm: 5, // 全角5文字相当
     viewportMargin: 240,
-    excludeImgPrefix: "https://soraniwa.428.st/gf/img/"
+    officialImgPrefixes: [
+      "https://soraniwa.428.st/gf/img/",
+      "https://st.x0.to/img/"
+    ]
   };
 
   const EXCLUDED_TEXT_TAGS = new Set([
@@ -52,6 +54,19 @@
 
   function addImageKeys(set, src) {
     for (const key of imageKeys(src)) set.add(key);
+  }
+
+  function isOfficialImage(src) {
+    if (!src) return false;
+
+    let href;
+    try {
+      href = new URL(src, location.href).href;
+    } catch (_) {
+      href = String(src);
+    }
+
+    return CFG.officialImgPrefixes.some(prefix => href.startsWith(prefix));
   }
 
   function collectTargets() {
@@ -141,7 +156,7 @@
 
     // 旧版互換: 公式NPC・公式素材以外の画像は、プレイヤー画像として扱う。
     // 上の actor/image 判定で拾えない外部アイコン対策。
-    return Boolean(src && !src.startsWith(CFG.excludeImgPrefix));
+    return Boolean(src && !isOfficialImage(src));
   }
 
   function rootHasTarget(root, re, targets) {
@@ -286,22 +301,6 @@
            r.left <= (window.innerWidth || document.documentElement.clientWidth) + m;
   }
 
-  function readEnabledState() {
-    try {
-      return localStorage.getItem(CFG.storageKey) === "on";
-    } catch (_) {
-      return false;
-    }
-  }
-
-  function writeEnabledState(enabled) {
-    try {
-      localStorage.setItem(CFG.storageKey, enabled ? "on" : "off");
-    } catch (_) {
-      // localStorage が使えない環境では、そのページ内だけで動けばよい。
-    }
-  }
-
   function addStylesAndHandlers() {
     const css = `
 .${CFG.textMaskClass}, .${CFG.imgMaskClass}{
@@ -431,14 +430,13 @@ body.${CFG.offClass} .${CFG.imgMaskClass}{ cursor:inherit; }
     btn.type = "button";
     document.body.appendChild(btn);
 
-    let enabled = readEnabledState(); // 初期状態はOFF。v4キーなので旧版のON状態は引き継がない。
+    let enabled = false; // 初期状態は常にOFF。状態保存はしない。
 
     function render() {
       document.body.classList.toggle(CFG.offClass, !enabled);
       btn.textContent = enabled ? "マスキングON" : "マスキングOFF";
       btn.classList.toggle("off", !enabled);
       btn.setAttribute("aria-pressed", enabled ? "true" : "false");
-      writeEnabledState(enabled);
     }
 
     btn.addEventListener("click", e => {
