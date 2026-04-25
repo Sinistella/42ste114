@@ -13,10 +13,8 @@
 
   const CFG = {
     selectorScrollData: "span.scrolldata",
-    teamAttr: "data-team",
     nameAttr: "data-cname",
     iconAttr: "data-icon",
-    teamValue: "0",
     textMaskClass: "gfre-mask-text",
     imgMaskClass: "gfre-mask-img",
     revealedClass: "gfre-revealed",
@@ -26,8 +24,8 @@
     toggleId: "gfre-mask-toggle",
     fixedEm: 5, // 全角5文字相当
     viewportMargin: 240,
-    // 公式画像はドメインだけで判定する。
-    // この2ドメイン以外の画像は、味方/敵/文脈を問わずマスキングする。
+    // 公式画像はホスト名だけで判定する。
+    // soraniwa.428.st / st.x0.to 以外の画像は、敵味方を問わずマスキングする。
     officialImgHosts: new Set([
       "soraniwa.428.st",
       "st.x0.to"
@@ -53,18 +51,20 @@
 
   function collectTargets() {
     const names = [];
-    const items = document.querySelectorAll(`${CFG.selectorScrollData} i[${CFG.nameAttr}]`);
+    const firstScrollData = document.querySelector(CFG.selectorScrollData);
+    if (!firstScrollData) return { names };
+
+    const items = firstScrollData.querySelectorAll(`i[${CFG.nameAttr}]`);
 
     for (const item of items) {
       const name = item.getAttribute(CFG.nameAttr);
       if (!name) continue;
 
-      const isOwnSide = item.getAttribute(CFG.teamAttr) === CFG.teamValue;
       const icon = item.getAttribute(CFG.iconAttr) || "";
-      const hasNonOfficialIcon = !!icon && !isOfficialImage(icon);
 
-      // 旧仕様の「team=0」は維持しつつ、敵側に出るプレイヤー/外部画像キャラも拾う。
-      if (isOwnSide || hasNonOfficialIcon) names.push(name);
+      // 最初のscrolldataを正本とし、非公式画像を持つキャラだけ名前を隠す。
+      // team/indexは敵味方の分類用であり、マスク要否には使わない。
+      if (icon && !isOfficialImage(icon)) names.push(name);
     }
 
     return {
