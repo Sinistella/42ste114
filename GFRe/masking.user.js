@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GFRe マスキング
 // @namespace    gfre.masking
-// @version      1.4.0
+// @version      1.5.0
 // @description  人様の名前と画像にマスキング
 // @match        https://soraniwa.428.st/gf/result/*
 // @updateURL    https://github.com/Sinistella/42ste114/raw/refs/heads/main/GFRe/masking.user.js
@@ -329,17 +329,28 @@
 .${CFG.textMaskClass}{
   position:relative;
   display:inline-block;
+  width: var(--maskW);
+  min-width: var(--maskW);
+  white-space:nowrap;
   cursor:pointer;
   outline:none;
-  min-width: var(--maskW);
   vertical-align:baseline;
 }
-.${CFG.textMaskClass}.${CFG.revealedClass}{ min-width:auto; }
+.${CFG.textMaskClass}.${CFG.revealedClass}{
+  width:auto;
+  min-width:0;
+}
 .${CFG.textMaskClass} .gfre-mask-text-inner{
+  display:inline-block;
+  max-width:0;
+  overflow:hidden;
+  white-space:nowrap;
   color:transparent;
   visibility:hidden;
 }
 .${CFG.textMaskClass}.${CFG.revealedClass} .gfre-mask-text-inner{
+  max-width:none;
+  overflow:visible;
   visibility:visible;
   color:inherit;
   text-shadow:none;
@@ -387,8 +398,14 @@
   opacity:0;
 }
 
-body.${CFG.offClass} .${CFG.textMaskClass}{ min-width:auto; cursor:inherit; }
+body.${CFG.offClass} .${CFG.textMaskClass}{
+  width:auto;
+  min-width:0;
+  cursor:inherit;
+}
 body.${CFG.offClass} .${CFG.textMaskClass} .gfre-mask-text-inner{
+  max-width:none;
+  overflow:visible;
   visibility:visible;
   color:inherit;
 }
