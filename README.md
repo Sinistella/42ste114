@@ -19,5 +19,5 @@ I luv MONSTER x DRAGON :D
 
 ## 北摩の拡張機能
 
-名に作ったか忘れたわ。
+何作ったか忘れたわ。今も動くのかな？
 </thinking>
